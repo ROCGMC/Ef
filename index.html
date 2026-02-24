@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星座配對計算機</title>
+    <style>
+        :root { --primary: #6b5b95; --accent: #feb236; }
+        body { font-family: sans-serif; background: #f7f7f7; display: flex; justify-content: center; padding: 20px; }
+        .card { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        h1 { color: var(--primary); margin-bottom: 1.5rem; }
+        .input-group { margin-bottom: 1rem; text-align: left; }
+        label { display: block; margin-bottom: 5px; color: #666; font-size: 0.9rem; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+        button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 1.1rem; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        button:hover { background: #55467d; }
+        #result { margin-top: 2rem; padding: 1rem; border-radius: 10px; display: none; background: #fff9e6; border: 1px solid var(--accent); }
+        .score { font-size: 2.5rem; font-weight: bold; color: var(--accent); margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>✨ 星座配對</h1>
+    <div class="input-group">
+        <label>你的生日</label>
+        <input type="date" id="date1" value="2000-01-01">
+    </div>
+    <div class="input-group">
+        <label>對方的生日</label>
+        <input type="date" id="date2" value="2000-01-01">
+    </div>
+    <button onclick="checkMatch()">計算契合度</button>
+
+    <div id="result">
+        <div id="zodiacs"></div>
+        <div class="score" id="score">0%</div>
+        <div id="desc"></div>
+    </div>
+</div>
+
+<script>
+const zodiacData = [
+    { name: "摩羯座", start: [12, 22], end: [1, 19], element: "土" },
+    { name: "水瓶座", start: [1, 20], end: [2, 18], element: "風" },
+    { name: "雙魚座", start: [2, 19], end: [3, 20], element: "水" },
+    { name: "牡羊座", start: [3, 21], end: [4, 19], element: "火" },
+    { name: "金牛座", start: [4, 20], end: [5, 20], element: "土" },
+    { name: "雙子座", start: [5, 21], end: [6, 21], element: "風" },
+    { name: "巨蟹座", start: [6, 22], end: [7, 22], element: "水" },
+    { name: "獅子座", start: [7, 23], end: [8, 22], element: "火" },
+    { name: "處女座", start: [8, 23], end: [9, 22], element: "土" },
+    { name: "天秤座", start: [9, 23], end: [10, 23], element: "風" },
+    { name: "天蠍座", start: [10, 24], end: [11, 22], element: "水" },
+    { name: "射手座", start: [11, 23], end: [12, 21], element: "火" }
+];
+
+function getZodiac(dateString) {
+    const d = new Date(dateString);
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    return zodiacData.find(z => {
+        const [sm, sd] = z.start;
+        const [em, ed] = z.end;
+        if (sm === 12 && (m === 12 && day >= sd || m === 1 && day <= ed)) return true;
+        return (m === sm && day >= sd) || (m === em && day <= ed);
+    }) || zodiacData[0];
+}
+
+function checkMatch() {
+    const z1 = getZodiac(document.getElementById('date1').value);
+    const z2 = getZodiac(document.getElementById('date2').value);
+    
+    // 契合度邏輯：同元素 95%，對沖元素(如火風) 85%，相剋(如火水) 50%，其餘 70%
+    let score = 70;
+    const e1 = z1.element, e2 = z2.element;
+    
+    if (e1 === e2) score = 95;
+    else if ((e1==="火" && e2==="風") || (e1==="風" && e2==="火")) score = 88;
+    else if ((e1==="水" && e2==="土") || (e1==="土" && e2==="水")) score = 90;
+    else if ((e1==="火" && e2==="水") || (e1==="水" && e2==="火")) score = 45;
+
+    // 加上一點隨機值讓結果看起來更「精準」
+    score += Math.floor(Math.random() * 5);
+
+    document.getElementById('result').style.display = 'block';
+    document.getElementById('zodiacs').innerText = `${z1.name} ❤️ ${z2.name}`;
+    document.getElementById('score').innerText = `${score}%`;
+    document.getElementById('desc').innerText = score > 80 ? "簡直是天作之合！" : "互相磨合會更好喔！";
+}
+</script>
+
+</body>
+</html>
