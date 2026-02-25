@@ -1,0 +1,16 @@
+{
+  "short_name": "課表",
+  "name": "台北標準時間智慧課表",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2602/2602414.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#f8fafc",
+  "display": "standalone",
+  "scope": "./",
+  "theme_color": "#3b82f6"
+}
