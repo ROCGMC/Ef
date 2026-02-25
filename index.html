@@ -64,17 +64,18 @@
     </div>
 
     <script>
-        // 設定節次時間
+            // 找到這一段（大約在 77 行），整段替換掉：
         const timeSlots = [
             { id: 1, start: "08:10", end: "09:00" },
             { id: 2, start: "09:10", end: "10:00" },
             { id: 3, start: "10:10", end: "11:00" },
             { id: 4, start: "11:10", end: "12:00" },
-            { id: 5, start: "13:30", end: "14:20" },
-            { id: 6, start: "14:30", end: "15:20" },
-            { id: 7, start: "15:30", end: "16:20" },
-            { id: 8, start: "16:30", end: "17:20" }
+            { id: 5, start: "13:10", end: "14:00" }, // 修正：13:10 開始
+            { id: 6, start: "14:10", end: "15:00" }, // 修正：14:10 開始
+            { id: 7, start: "15:20", end: "16:10" }, // 修正：15:20 開始
+            { id: 8, start: "16:20", end: "17:10" }  // 修正：16:20 開始
         ];
+
 
         let baseSchedule = JSON.parse(localStorage.getItem('baseSchedule')) || {};
         let reschedules = JSON.parse(localStorage.getItem('reschedules')) || {};
