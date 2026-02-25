@@ -1,18 +1,207 @@
-const CACHE_NAME = 'timetable-v1';
-const ASSETS = [
-  './',
-  './index.html',
-  'https://cdn.tailwindcss.com'
-];
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台北標準時間課表</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .is-now { border: 3px solid #3b82f6; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen pb-20">
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
-  );
-});
+    <div class="max-w-md mx-auto p-4">
+        <div class="bg-white rounded-3xl p-6 shadow-sm mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-sm font-bold text-slate-400">Taipei Time (GMT+8)</span>
+                <span id="clock" class="text-lg font-mono font-bold text-slate-800">00:00:00</span>
+            </div>
+            
+            <div id="now-card" class="mb-4">
+                <p class="text-xs font-black text-blue-500 uppercase tracking-widest">Current 當前</p>
+                <h1 id="current-lesson" class="text-2xl font-bold text-slate-800">目前沒課</h1>
+                <p id="current-teacher" class="text-slate-500">--</p>
+            </div>
+            <div class="border-t border-slate-100 pt-4">
+                <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Next 下一節</p>
+                <h2 id="next-lesson" class="text-lg font-bold text-slate-700">--</h2>
+            </div>
+        </div>
 
-self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    caches.match(e.request).then((res) => res || fetch(e.request))
-  );
-});
+        <div class="grid grid-cols-2 gap-3 mb-8">
+            <button onclick="openModal('setupModal')" class="bg-slate-800 text-white py-4 rounded-2xl font-bold shadow-lg">設定課表</button>
+            <button onclick="openModal('rescheduleModal')" class="bg-amber-500 text-white py-4 rounded-2xl font-bold shadow-lg">快速調課</button>
+        </div>
+
+        <h3 id="today-title" class="font-bold text-slate-800 mb-4 px-1">今日課程</h3>
+        <div id="schedule-list" class="space-y-3"></div>
+    </div>
+
+    <div id="setupModal" class="fixed inset-0 bg-black/60 hidden z-50 p-4 flex items-center justify-center">
+        <div class="bg-white rounded-3xl w-full max-w-md p-6 max-h-[80vh] overflow-y-auto">
+            <h2 class="text-xl font-bold mb-4">編輯基礎課表</h2>
+            <div id="setup-inputs" class="space-y-4"></div>
+            <button onclick="saveBaseSchedule()" class="w-full bg-blue-600 text-white py-3 rounded-xl mt-6 font-bold">儲存課表</button>
+            <button onclick="closeModal('setupModal')" class="w-full text-slate-400 py-2 mt-2">取消</button>
+        </div>
+    </div>
+
+    <div id="rescheduleModal" class="fixed inset-0 bg-black/60 hidden z-50 p-4 flex items-center justify-center">
+        <div class="bg-white rounded-3xl w-full max-w-md p-6">
+            <h2 class="text-xl font-bold mb-4">調課設定 (僅限今日)</h2>
+            <p class="text-sm text-slate-500 mb-4">選擇哪一節課要更換內容：</p>
+            <select id="resched-slot" class="w-full p-3 border rounded-xl mb-4 bg-slate-50"></select>
+            <input id="resched-name" type="text" placeholder="新的課程名稱" class="w-full p-3 border rounded-xl mb-3">
+            <input id="resched-teacher" type="text" placeholder="新的老師名稱" class="w-full p-3 border rounded-xl mb-4">
+            <button onclick="saveReschedule()" class="w-full bg-amber-500 text-white py-3 rounded-xl font-bold">確認調課</button>
+            <button onclick="clearReschedule()" class="w-full text-red-400 py-2 mt-2">清除今日調課紀錄</button>
+            <button onclick="closeModal('rescheduleModal')" class="w-full text-slate-400 py-2 mt-2">取消</button>
+        </div>
+    </div>
+
+    <script>
+        // 設定節次時間
+        const timeSlots = [
+            { id: 1, start: "08:10", end: "09:00" },
+            { id: 2, start: "09:10", end: "10:00" },
+            { id: 3, start: "10:10", end: "11:00" },
+            { id: 4, start: "11:10", end: "12:00" },
+            { id: 5, start: "13:30", end: "14:20" },
+            { id: 6, start: "14:30", end: "15:20" },
+            { id: 7, start: "15:30", end: "16:20" },
+            { id: 8, start: "16:30", end: "17:20" }
+        ];
+
+        let baseSchedule = JSON.parse(localStorage.getItem('baseSchedule')) || {};
+        let reschedules = JSON.parse(localStorage.getItem('reschedules')) || {};
+
+        function updateClock() {
+            const now = new Date();
+            const taipeiTime = new Intl.DateTimeFormat('zh-TW', {
+                timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+            }).format(now);
+            document.getElementById('clock').innerText = taipeiTime;
+            refreshUI();
+        }
+
+        function refreshUI() {
+            const now = new Date();
+            const day = now.getDay(); // 0 是週日
+            const currentTime = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+            const todayStr = now.toISOString().split('T')[0];
+
+            let currentLesson = null;
+            let nextLesson = null;
+            let listHTML = '';
+
+            timeSlots.forEach(slot => {
+                let lesson = baseSchedule[`${day}-${slot.id}`] || { name: "", teacher: "" };
+                let isRescheduled = false;
+
+                // 檢查調課
+                if (reschedules[todayStr] && reschedules[todayStr][slot.id]) {
+                    lesson = reschedules[todayStr][slot.id];
+                    isRescheduled = true;
+                }
+
+                const isNow = currentTime >= slot.start && currentTime < slot.end;
+                if (isNow) currentLesson = lesson;
+                if (currentTime < slot.start && !nextLesson && lesson.name) nextLesson = lesson;
+
+                listHTML += `
+                    <div class="p-4 rounded-2xl bg-white shadow-sm flex items-center gap-4 ${isNow ? 'is-now' : ''} ${isRescheduled ? 'border-l-8 border-amber-400' : ''}">
+                        <div class="text-center min-w-[60px]">
+                            <div class="text-xs text-slate-400">${slot.start}</div>
+                            <div class="font-bold text-slate-700">第 ${slot.id} 節</div>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-bold text-slate-800">${lesson.name || '空堂'} ${isRescheduled ? '<span class="text-[10px] bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full ml-1">已調課</span>' : ''}</div>
+                            <div class="text-sm text-slate-400">${lesson.teacher || '--'}</div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('schedule-list').innerHTML = listHTML;
+            document.getElementById('current-lesson').innerText = currentLesson?.name || "目前沒課";
+            document.getElementById('current-teacher').innerText = currentLesson?.teacher || "--";
+            document.getElementById('next-lesson').innerText = nextLesson?.name || "無下節課";
+        }
+
+        // 初始化設定介面
+        function initSetup() {
+            const dayNames = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
+            const now = new Date();
+            const day = now.getDay();
+            let html = `<p class='font-bold text-blue-600 mb-2'>正在設定：${dayNames[day]}</p>`;
+            
+            timeSlots.forEach(slot => {
+                const data = baseSchedule[`${day}-${slot.id}`] || { name: "", teacher: "" };
+                html += `
+                    <div class="grid grid-cols-5 gap-2 items-center">
+                        <span class="text-sm font-bold">${slot.id}節</span>
+                        <input id="input-n-${slot.id}" type="text" value="${data.name}" placeholder="課程" class="col-span-2 p-2 border rounded-lg text-sm">
+                        <input id="input-t-${slot.id}" type="text" value="${data.teacher}" placeholder="老師" class="col-span-2 p-2 border rounded-lg text-sm">
+                    </div>
+                `;
+            });
+            document.getElementById('setup-inputs').innerHTML = html;
+
+            let reschedSelect = '<option value="">請選擇節次</option>';
+            timeSlots.forEach(slot => {
+                reschedSelect += `<option value="${slot.id}">第 ${slot.id} 節 (${slot.start})</option>`;
+            });
+            document.getElementById('resched-slot').innerHTML = reschedSelect;
+        }
+
+        function saveBaseSchedule() {
+            const day = new Date().getDay();
+            timeSlots.forEach(slot => {
+                baseSchedule[`${day}-${slot.id}`] = {
+                    name: document.getElementById(`input-n-${slot.id}`).value,
+                    teacher: document.getElementById(`input-t-${slot.id}`).value
+                };
+            });
+            localStorage.setItem('baseSchedule', JSON.stringify(baseSchedule));
+            closeModal('setupModal');
+        }
+
+        function saveReschedule() {
+            const slotId = document.getElementById('resched-slot').value;
+            const name = document.getElementById('resched-name').value;
+            const teacher = document.getElementById('resched-teacher').value;
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            if (!reschedules[todayStr]) reschedules[todayStr] = {};
+            reschedules[todayStr][slotId] = { name, teacher, color: 'amber' };
+            
+            localStorage.setItem('reschedules', JSON.stringify(reschedules));
+            closeModal('rescheduleModal');
+        }
+
+        function clearReschedule() {
+            const todayStr = new Date().toISOString().split('T')[0];
+            delete reschedules[todayStr];
+            localStorage.setItem('reschedules', JSON.stringify(reschedules));
+            closeModal('rescheduleModal');
+        }
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); initSetup(); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // 註冊 PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js');
+            });
+        }
+    </script>
+</body>
+</html>
