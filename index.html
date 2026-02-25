@@ -64,17 +64,130 @@
     </div>
 
     <script>
-            // 找到這一段（大約在 77 行），整段替換掉：
+          // 1. 修正後的節次時間 (對應東港海事)
         const timeSlots = [
             { id: 1, start: "08:10", end: "09:00" },
             { id: 2, start: "09:10", end: "10:00" },
             { id: 3, start: "10:10", end: "11:00" },
             { id: 4, start: "11:10", end: "12:00" },
-            { id: 5, start: "13:10", end: "14:00" }, // 修正：13:10 開始
-            { id: 6, start: "14:10", end: "15:00" }, // 修正：14:10 開始
-            { id: 7, start: "15:20", end: "16:10" }, // 修正：15:20 開始
-            { id: 8, start: "16:20", end: "17:10" }  // 修正：16:20 開始
+            { id: 5, start: "13:10", end: "14:00" },
+            { id: 6, start: "14:10", end: "15:00" },
+            { id: 7, start: "15:20", end: "16:10" },
+            { id: 8, start: "16:20", end: "17:10" }
         ];
+
+        let baseSchedule = JSON.parse(localStorage.getItem('baseSchedule')) || {};
+        let reschedules = JSON.parse(localStorage.getItem('reschedules')) || {};
+
+        function updateClock() {
+            const now = new Date();
+            const taipeiTime = new Intl.DateTimeFormat('zh-TW', {
+                timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+            }).format(now);
+            document.getElementById('clock').innerText = taipeiTime;
+            refreshUI();
+        }
+
+        function refreshUI() {
+            const now = new Date();
+            const day = now.getDay(); 
+            const currentTime = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+            const todayStr = now.toISOString().split('T')[0];
+
+            let currentLesson = null;
+            let nextLesson = null;
+            let listHTML = '';
+
+            // 判斷週末
+            if (day === 0 || day === 6) {
+                document.getElementById('schedule-list').innerHTML = '<div class="p-8 text-center text-slate-400">週末愉快！好好休息吧 ☕</div>';
+                document.getElementById('current-lesson').innerText = "放假中";
+                return;
+            }
+
+            timeSlots.forEach(slot => {
+                let lesson = baseSchedule[`${day}-${slot.id}`] || { name: "", teacher: "" };
+                let isRescheduled = false;
+
+                if (reschedules[todayStr] && reschedules[todayStr][slot.id]) {
+                    lesson = reschedules[todayStr][slot.id];
+                    isRescheduled = true;
+                }
+
+                const isNow = currentTime >= slot.start && currentTime < slot.end;
+                if (isNow) currentLesson = lesson;
+                if (currentTime < slot.start && !nextLesson && lesson.name) nextLesson = lesson;
+
+                listHTML += `
+                    <div class="p-4 rounded-2xl bg-white shadow-sm flex items-center gap-4 ${isNow ? 'is-now' : ''} ${isRescheduled ? 'border-l-8 border-amber-400' : ''}">
+                        <div class="text-center min-w-[60px]">
+                            <div class="text-xs text-slate-400">${slot.start}</div>
+                            <div class="font-bold text-slate-700">第 ${slot.id} 節</div>
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-bold text-slate-800">${lesson.name || '空堂'}</div>
+                            <div class="text-sm text-slate-400">${lesson.teacher || '--'}</div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('schedule-list').innerHTML = listHTML;
+            document.getElementById('current-lesson').innerText = currentLesson?.name || "目前沒課";
+            document.getElementById('current-teacher').innerText = currentLesson?.teacher || "--";
+            document.getElementById('next-lesson').innerText = nextLesson?.name || "無下節課";
+        }
+
+        // 2. 修改設定介面：增加星期切換
+        function initSetup() {
+            const dayNames = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
+            // 預設選取當前星期（如果是週末則選週一）
+            let currentEditDay = new Date().getDay();
+            if (currentEditDay === 0 || currentEditDay === 6) currentEditDay = 1;
+
+            renderSetupInputs(currentEditDay);
+        }
+
+        function renderSetupInputs(day) {
+            const dayNames = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
+            let html = `
+                <div class="mb-4">
+                    <label class="text-xs font-bold text-slate-400 block mb-1">正在編輯：</label>
+                    <select id="edit-day-select" onchange="renderSetupInputs(this.value)" class="w-full p-2 border rounded-xl bg-blue-50 font-bold text-blue-600">
+                        ${[1,2,3,4,5].map(d => `<option value="${d}" ${day == d ? 'selected' : ''}>${dayNames[d]}</option>`).join('')}
+                    </select>
+                </div>
+            `;
+
+            timeSlots.forEach(slot => {
+                const data = baseSchedule[`${day}-${slot.id}`] || { name: "", teacher: "" };
+                html += `
+                    <div class="grid grid-cols-5 gap-2 items-center mb-2">
+                        <span class="text-sm font-bold text-slate-500">${slot.id}節</span>
+                        <input id="input-n-${slot.id}" type="text" value="${data.name}" placeholder="課程" class="col-span-2 p-2 border rounded-lg text-sm">
+                        <input id="input-t-${slot.id}" type="text" value="${data.teacher}" placeholder="老師" class="col-span-2 p-2 border rounded-lg text-sm">
+                    </div>
+                `;
+            });
+            document.getElementById('setup-inputs').innerHTML = html;
+        }
+
+        // 3. 修改儲存邏輯：根據選取的星期儲存
+        function saveBaseSchedule() {
+            const selectedDay = document.getElementById('edit-day-select').value;
+            timeSlots.forEach(slot => {
+                baseSchedule[`${selectedDay}-${slot.id}`] = {
+                    name: document.getElementById(`input-n-${slot.id}`).value,
+                    teacher: document.getElementById(`input-t-${slot.id}`).value
+                };
+            });
+            localStorage.setItem('baseSchedule', JSON.stringify(baseSchedule));
+            alert('儲存成功！');
+            refreshUI();
+        }
+
+        // ... 以下 saveReschedule, clearReschedule 等保持不變 ...
+
 
 
         let baseSchedule = JSON.parse(localStorage.getItem('baseSchedule')) || {};
