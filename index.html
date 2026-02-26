@@ -2,173 +2,219 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>校園課表 PWA - 倒數計時版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>校園動態課表系統</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#2196F3">
     <style>
-        :root { --primary: #2196F3; --accent: #FFEB3B; --bg: #f4f4f9; --danger: #ff5252; }
-        body { font-family: -apple-system, "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #333; }
+        :root { --primary: #2c3e50; --accent: #f1c40f; --bg: #f4f7f6; --card: #ffffff; }
+        body { font-family: -apple-system, "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; overflow-x: hidden; }
         
+        /* 右上角選單按鈕 */
+        .menu-btn { position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.1); border: none; color: white; font-size: 24px; cursor: pointer; z-index: 100; padding: 5px 10px; border-radius: 8px; }
+
         /* 儀表板 */
-        .dashboard { background: #333; color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        #status { font-size: 1.3rem; font-weight: bold; color: white; margin-bottom: 5px; }
-        #countdown { font-size: 3rem; font-weight: bold; color: var(--accent); margin: 10px 0; font-family: 'Courier New', Courier, monospace; }
-        .time-info { font-size: 0.85rem; color: #bbb; display: flex; justify-content: center; gap: 15px; }
+        .dashboard { background: var(--primary); color: white; padding: 30px 15px; border-radius: 20px; text-align: center; margin-bottom: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); position: relative; }
+        #status-text { font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px; }
+        #countdown { font-size: 4.5rem; font-weight: bold; color: var(--accent); margin: 5px 0; font-family: 'Courier New', monospace; }
+        .school-time { font-size: 0.8rem; color: #95a5a6; }
 
-        /* 校對區 */
-        .calibration { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 15px; border-top: 1px solid #444; padding-top: 15px; }
-        .cal-btn { background: #555; border: none; color: white; padding: 6px 12px; border-radius: 5px; font-size: 12px; cursor: pointer; }
-        #offsetDisplay { font-size: 12px; color: #888; }
+        /* 校對控制 */
+        .cal-box { display: flex; justify-content: center; gap: 10px; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; }
+        .btn-s { background: #455a64; border: none; color: white; padding: 5px 12px; border-radius: 5px; font-size: 12px; }
 
-        /* 選單與表格樣式同前 */
-        .selector-box { margin-bottom: 15px; display: flex; justify-content: center; }
-        select { width: 100%; max-width: 350px; padding: 12px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; background: white; }
-        .table-container { overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        table { width: 100%; border-collapse: collapse; min-width: 500px; table-layout: fixed; }
-        th, td { border: 1px solid #eee; padding: 10px 5px; text-align: center; }
-        th { background: var(--primary); color: white; font-weight: normal; }
-        .subject-text { font-size: 14px; font-weight: bold; display: block; }
-        .teacher-label { font-size: 11px; color: #777; display: block; }
-        .active-row { background-color: #fffde7 !important; }
-        .active-cell { background-color: var(--accent) !important; color: black; border: 2px solid #fbc02d !important; font-weight: bold; }
-        .break-row { background: #f9f9f9; color: #888; font-size: 12px; }
+        /* 選單與彈窗 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; animation: fadeIn 0.3s; }
+        .modal-content { background: #2c3e50; color: white; border-radius: 20px; padding: 25px; max-width: 450px; margin: 40px auto; position: relative; width: 85%; }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; }
+        
+        /* 功能列 */
+        .setting-item { display: flex; justify-content: space-between; align-items: center; margin: 20px 0; padding-bottom: 10px; border-bottom: 1px solid #3e4f5f; }
+        .search-input { width: 100%; padding: 12px; border-radius: 8px; border: none; margin: 15px 0; font-size: 16px; }
+        .teacher-result { background: #34495e; padding: 15px; border-radius: 12px; margin-top: 15px; border-left: 5px solid var(--accent); }
+
+        /* 課表表格 */
+        .table-card { background: var(--card); border-radius: 15px; overflow-x: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; min-width: 500px; }
+        th, td { padding: 12px 5px; text-align: center; border-bottom: 1px solid #f0f0f0; }
+        th { background: #34495e; color: white; font-weight: normal; font-size: 14px; }
+        .active-cell { background-color: var(--accent) !important; color: #000 !important; font-weight: bold; border-radius: 6px; }
+        .teacher-name { font-size: 10px; color: #7f8c8d; display: block; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
 
-<div class="dashboard">
-    <div id="status">正在讀取...</div>
-    <div id="countdown">00:00</div>
-    <div class="time-info">
-        <span>校園時間: <span id="schoolTimeDisplay">00:00:00</span></span>
-    </div>
-    
-    <div class="calibration">
-        <button class="cal-btn" onclick="adjustOffset(-1)">-1s</button>
-        <span id="offsetDisplay">校對: 0s</span>
-        <button class="cal-btn" onclick="adjustOffset(1)">+1s</button>
-        <button class="cal-btn" style="margin-left:10px" onclick="resetOffset()">歸零</button>
-    </div>
-</div>
+    <button class="menu-btn" onclick="openModal('menuModal')">☰</button>
 
-<div class="selector-box">
-    <select id="classSelect" onchange="changeClass()"></select>
-</div>
+    <div class="dashboard">
+        <div id="status-text">系統讀取中...</div>
+        <div id="countdown">00:00</div>
+        <div class="school-time">校準時間：<span id="real-clock">00:00:00</span></div>
+        <div class="cal-box">
+            <button class="btn-s" onclick="adj(-1)">-1s</button>
+            <span id="offset-lab" style="font-size:12px; align-self:center;">校對: 0s</span>
+            <button class="btn-s" onclick="adj(1)">+1s</button>
+        </div>
+    </div>
 
-<div class="table-container" id="tableTarget"></div>
+    <div style="text-align:center; margin-bottom:15px;">
+        <select id="classPicker" onchange="changeClass()" style="width:90%; padding:10px; border-radius:8px; border:1px solid #ddd;"></select>
+    </div>
+
+    <div class="table-card" id="tableBox"></div>
+
+    <div id="menuModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('menuModal')">×</span>
+            <h3>功能設定</h3>
+            <div class="setting-item">
+                <span>🔅 螢幕長亮不關閉</span>
+                <input type="checkbox" id="wakeLockCheck" onchange="toggleWakeLock(this.checked)" style="width:20px; height:20px;">
+            </div>
+            <button onclick="openSearch()" style="width:100%; padding:15px; background:var(--accent); color:#000; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">🔍 搜尋教師動態</button>
+        </div>
+    </div>
+
+    <div id="searchModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal('searchModal')">×</span>
+            <h3>教師位置搜尋</h3>
+            <input type="text" id="teacherInp" class="search-input" placeholder="請輸入老師全名..." oninput="doSearch()">
+            <div id="searchRes"></div>
+        </div>
+    </div>
 
 <script src="data.js"></script>
 <script>
-    const timeSlots = [
-        { name: "第一節", start: "08:10", end: "09:00" },
-        { name: "第二節", start: "09:10", end: "10:00" },
-        { name: "第三節", start: "10:10", end: "11:00" },
-        { name: "第四節", start: "11:10", end: "12:00" },
-        { name: "第五節", start: "13:10", end: "14:00" },
-        { name: "第六節", start: "14:10", end: "15:00" },
-        { name: "第七節", start: "15:20", end: "16:10" }
-    ];
+    // --- 初始化 ---
+    let offset = parseInt(localStorage.getItem('offset')) || 0;
+    let wakeLock = null;
 
-    let timeOffset = parseInt(localStorage.getItem('timeOffset')) || 0;
-
-    function initApp() {
-        if (typeof allSchedules === 'undefined') return;
-        const select = document.getElementById('classSelect');
-        Object.keys(allSchedules).forEach(cls => {
-            const opt = document.createElement('option');
-            opt.value = cls; opt.innerHTML = cls;
-            select.appendChild(opt);
+    function init() {
+        if (typeof allSchedules === 'undefined') {
+            document.getElementById('tableBox').innerHTML = "<p style='text-align:center;padding:20px;'>找不到 data.js</p>";
+            return;
+        }
+        const p = document.getElementById('classPicker');
+        Object.keys(allSchedules).forEach(k => {
+            let o = document.createElement('option'); o.value = k; o.text = k; p.appendChild(o);
         });
-        const saved = localStorage.getItem('selectedClass');
-        if (saved && allSchedules[saved]) select.value = saved;
+        p.value = localStorage.getItem('lastClass') || "電一乙";
         
-        renderTable();
-        updateLogic();
-        setInterval(updateLogic, 1000);
+        render();
+        setInterval(tick, 1000);
     }
 
-    function adjustOffset(s) {
-        timeOffset += s;
-        localStorage.setItem('timeOffset', timeOffset);
-    }
+    // --- 核心邏輯 ---
+    function adj(v) { offset += v; localStorage.setItem('offset', offset); }
+    function changeClass() { localStorage.setItem('lastClass', document.getElementById('classPicker').value); render(); }
 
-    function resetOffset() {
-        timeOffset = 0;
-        localStorage.setItem('timeOffset', 0);
-    }
-
-    function renderTable() {
-        const className = document.getElementById('classSelect').value;
-        const data = allSchedules[className];
-        let html = `<table id="timetable"><thead><tr><th style="width:15%">節</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th></tr></thead><tbody>`;
-        data.forEach((row, i) => {
-            if (i === 4) html += `<tr class="break-row"><td colspan="6">午休 (12:00 - 13:10)</td></tr>`;
-            html += `<tr><td>${i+1}</td>`;
-            row.forEach(cell => {
-                let [sub, tea] = cell.split('(');
-                tea = tea ? tea.replace(')', '') : "";
-                html += `<td><span class="subject-text">${sub}</span>${tea ? `<span class="teacher-label">${tea}</span>` : ""}</td>`;
+    function render() {
+        const cls = document.getElementById('classPicker').value;
+        const d = allSchedules[cls];
+        let h = `<table><tr><th>節</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th></tr>`;
+        d.forEach((r, i) => {
+            if (i === 4) h += `<tr style="background:#f9f9f9; font-size:12px; color:#999;"><td colspan="6">午休時間</td></tr>`;
+            h += `<tr><td style="font-size:12px; color:#999;">${i+1}</td>`;
+            r.forEach(c => {
+                let [s, t] = c.split('(');
+                h += `<td><b>${s}</b>${t ? `<span class="teacher-name">${t.replace(')','')}</span>` : ""}</td>`;
             });
-            html += `</tr>`;
+            h += `</tr>`;
         });
-        document.getElementById('tableTarget').innerHTML = html + `</tbody></table>`;
+        document.getElementById('tableBox').innerHTML = h + `</table>`;
     }
 
-    function updateLogic() {
-        const now = new Date(new Date().getTime() + timeOffset * 1000);
-        const h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
-        const totalSec = h * 3600 + m * 60 + s;
-        const day = now.getDay(); 
+    function tick() {
+        const now = new Date(Date.now() + offset * 1000);
+        const sec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+        const day = now.getDay();
+        document.getElementById('real-clock').innerText = now.toTimeString().split(' ')[0];
+        document.getElementById('offset-lab').innerText = `校對: ${offset}s`;
 
-        document.getElementById('schoolTimeDisplay').innerText = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-        document.getElementById('offsetDisplay').innerText = `校對: ${timeOffset}s`;
+        let cur = -1, cd = "--:--", st = "🏠 放學/休息時間";
 
-        let currentIdx = -1;
-        let countdownVal = "";
-        let statusText = "🏠 放學囉 / 尚未上課";
-
-        timeSlots.forEach((slot, i) => {
-            const [sH, sM] = slot.start.split(':').map(Number);
-            const [eH, eM] = slot.end.split(':').map(Number);
-            const startS = sH * 3600 + sM * 60, endS = eH * 3600 + eM * 60;
-
-            if (totalSec >= startS && totalSec < endS) {
-                currentIdx = i;
-                const rem = endS - totalSec;
-                statusText = `🔔 正在上：${slot.name}`;
-                countdownVal = `${Math.floor(rem/60)}:${String(rem%60).padStart(2,'0')}`;
-            } else if (totalSec < startS && countdownVal === "") {
-                const wait = startS - totalSec;
-                statusText = `☕ 休息中，待會：${slot.name}`;
-                countdownVal = `${Math.floor(wait/60)}:${String(wait%60).padStart(2,'0')}`;
+        timeSlots.forEach((o, i) => {
+            const start = toS(o.start), end = toS(o.end);
+            if (sec >= start && sec < end) {
+                cur = i; st = `🔔 正在上：${o.name}`;
+                let r = end - sec; cd = `${Math.floor(r/60)}:${String(r%60).padStart(2,'0')}`;
+            } else if (sec < start && cd === "--:--") {
+                let w = start - sec; st = `☕ 下課中，待會：${o.name}`;
+                cd = `${Math.floor(w/60)}:${String(w%60).padStart(2,'0')}`;
             }
         });
 
-        document.getElementById('status').innerText = statusText;
-        document.getElementById('countdown').innerText = countdownVal || "--:--";
+        document.getElementById('status-text').innerText = st;
+        document.getElementById('countdown').innerText = cd;
 
-        // 表格高亮邏輯
-        document.querySelectorAll('tr').forEach(r => r.classList.remove('active-row'));
+        // 高亮
         document.querySelectorAll('td').forEach(c => c.classList.remove('active-cell'));
-        if (currentIdx !== -1 && day >= 1 && day <= 5) {
-            const rows = document.querySelectorAll('#timetable tbody tr:not(.break-row)');
-            const curRow = rows[currentIdx];
-            if(curRow) {
-                curRow.classList.add('active-row');
-                curRow.cells[day].classList.add('active-cell');
-            }
+        if (cur !== -1 && day >= 1 && day <= 5) {
+            const rows = document.querySelectorAll('tr');
+            const targetRow = rows[cur + (cur >= 4 ? 2 : 1)];
+            if(targetRow) targetRow.cells[day].classList.add('active-cell');
         }
     }
 
-    function changeClass() {
-        localStorage.setItem('selectedClass', document.getElementById('classSelect').value);
-        renderTable();
-        updateLogic();
+    function toS(t) { const [h, m] = t.split(':'); return h * 3600 + m * 60; }
+
+    // --- 功能彈窗 ---
+    function openModal(id) { document.getElementById(id).style.display = 'block'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    function openSearch() { closeModal('menuModal'); openModal('searchModal'); }
+
+    // --- 螢幕長亮 (Wake Lock) ---
+    async function toggleWakeLock(on) {
+        if (on) {
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                console.log("Wake Lock Active");
+            } catch (err) {
+                alert("此設備不支援螢幕長亮");
+                document.getElementById('wakeLockCheck').checked = false;
+            }
+        } else if (wakeLock) {
+            wakeLock.release();
+            wakeLock = null;
+        }
     }
 
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
-    window.onload = initApp;
+    // --- 教師搜尋 ---
+    function doSearch() {
+        const q = document.getElementById('teacherInp').value;
+        const res = document.getElementById('searchRes');
+        if (!q) { res.innerHTML = ""; return; }
+
+        let found = [];
+        Object.keys(allSchedules).forEach(cls => {
+            allSchedules[cls].forEach((row, pi) => {
+                row.forEach((cell, di) => {
+                    if (cell.includes(q)) found.push({ cls, pi, di: di + 1 });
+                });
+            });
+        });
+
+        if (found.length === 0) { res.innerHTML = "找不到資料"; return; }
+
+        const now = new Date(Date.now() + offset * 1000);
+        const d = now.getDay();
+        const s = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+
+        let curPos = found.find(f => f.di === d && s >= toS(timeSlots[f.pi].start) && s < toS(timeSlots[f.pi].end));
+        let nextPos = found.filter(f => f.di === d && toS(timeSlots[f.pi].start) > s).sort((a,b) => a.pi - b.pi)[0];
+
+        res.innerHTML = `
+            <div class="teacher-result">
+                <h4>👨‍🏫 ${q} 老師</h4>
+                <p>📍 目前：${curPos ? `<b style="color:var(--accent)">${curPos.cls}</b>` : "無課 / 辦公室"}</p>
+                <p>⏭️ 下一節：${nextPos ? `<b>${nextPos.cls}</b>` : "今日無後續課程"}</p>
+            </div>
+        `;
+    }
+
+    window.onload = init;
 </script>
 </body>
 </html>
