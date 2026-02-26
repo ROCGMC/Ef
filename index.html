@@ -3,18 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>校準版課表 PWA</title>
+    <title>校園動態課表 PWA</title>
+    <link rel="manifest" href="manifest.json">
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
-        .dashboard { background: #333; color: #fff; padding: 15px; border-radius: 10px; margin-bottom: 15px; text-align: center; }
-        #timer { font-size: 24px; color: #ffeb3b; font-weight: bold; margin: 5px 0; }
-        .calibration { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
-        .cal-btn { background: #555; border: none; color: white; padding: 5px 10px; border-radius: 5px; font-size: 12px; cursor: pointer; }
+        :root { --primary: #2196F3; --accent: #FFEB3B; }
+        body { font-family: sans-serif; background: #f4f4f9; margin: 0; padding: 15px; color: #333; }
         
-        table { width: 100%; border-collapse: collapse; background: white; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
-        .active-row { background-color: #fff9c4; border: 2px solid #fbc02d; box-shadow: inset 0 0 10px rgba(251,192,45,0.3); }
-        .next-hint { font-size: 12px; color: #bbb; }
+        /* 儀表板樣式 */
+        .dashboard { background: #333; color: white; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        #timer { font-size: 2rem; font-weight: bold; color: var(--accent); margin: 5px 0; }
+        #status { font-size: 1.1rem; }
+        #nextHint { font-size: 0.9rem; color: #bbb; margin-top: 5px; }
+
+        /* 校對按鈕 */
+        .calibration { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
+        .cal-btn { background: #555; border: none; color: white; padding: 5px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+        
+        /* 下拉選單 */
+        .selector-box { margin-bottom: 15px; text-align: center; }
+        select { width: 100%; max-width: 300px; padding: 10px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; }
+
+        /* 課表樣式 */
+        .table-container { overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; min-width: 500px; }
+        th, td { border: 1px solid #eee; padding: 12px 8px; text-align: center; }
+        th { background: var(--primary); color: white; }
+        
+        /* 動態高亮 */
+        .active-row { background-color: #fffde7 !important; border: 2px solid #fbc02d !important; font-weight: bold; }
+        .active-cell { background-color: var(--accent) !important; color: black; border-radius: 4px; }
+        .time-label { font-size: 10px; color: #888; display: block; }
+        .break-row { background: #f9f9f9; color: #999; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -22,22 +41,24 @@
 <div class="dashboard">
     <div id="status">讀取中...</div>
     <div id="timer">00:00:00</div>
-    <div class="next-hint" id="nextHint"></div>
-    
+    <div id="nextHint"></div>
     <div class="calibration">
         <button class="cal-btn" onclick="adjustOffset(-10)">-10s</button>
         <button class="cal-btn" onclick="adjustOffset(-1)">-1s</button>
-        <span id="offsetDisplay" style="font-size: 12px; align-self: center;">校對: 0s</span>
+        <span id="offsetDisplay">校對: 0s</span>
         <button class="cal-btn" onclick="adjustOffset(1)">+1s</button>
         <button class="cal-btn" onclick="adjustOffset(10)">+10s</button>
     </div>
 </div>
 
-<div id="tableContainer"></div>
+<div class="selector-box">
+    <select id="classSelect" onchange="changeClass()"></select>
+</div>
+
+<div class="table-container" id="tableTarget"></div>
 
 <script src="data.js"></script>
 <script>
-    // 1. 課表與時間定義
     const timeSlots = [
         { name: "第一節", start: "08:10", end: "09:00" },
         { name: "第二節", start: "09:10", end: "10:00" },
@@ -48,78 +69,101 @@
         { name: "第七節", start: "15:20", end: "16:10" }
     ];
 
-    // 2. 校對邏輯
     let timeOffset = parseInt(localStorage.getItem('timeOffset')) || 0;
 
-    function adjustOffset(seconds) {
-        timeOffset += seconds;
+    // 1. 初始化班級選單
+    function init() {
+        const select = document.getElementById('classSelect');
+        Object.keys(allSchedules).forEach(cls => {
+            const opt = document.createElement('option');
+            opt.value = cls;
+            opt.innerHTML = cls;
+            select.appendChild(opt);
+        });
+
+        const savedClass = localStorage.getItem('selectedClass');
+        if (savedClass && allSchedules[savedClass]) {
+            select.value = savedClass;
+        }
+        
+        renderTable();
+        updateLogic();
+        setInterval(updateLogic, 1000);
+    }
+
+    // 2. 切換班級
+    function changeClass() {
+        localStorage.setItem('selectedClass', document.getElementById('classSelect').value);
+        renderTable();
+        updateLogic();
+    }
+
+    // 3. 校對時間
+    function adjustOffset(s) {
+        timeOffset += s;
         localStorage.setItem('timeOffset', timeOffset);
         document.getElementById('offsetDisplay').innerText = `校對: ${timeOffset}s`;
     }
 
-    function getSchoolTime() {
-        const now = new Date();
-        return new Date(now.getTime() + timeOffset * 1000);
+    // 4. 繪製表格
+    function renderTable() {
+        const className = document.getElementById('classSelect').value;
+        const data = allSchedules[className];
+        let html = `<table id="timetable"><thead><tr><th>節</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th></tr></thead><tbody>`;
+        
+        data.forEach((row, i) => {
+            if (i === 4) html += `<tr class="break-row"><td colspan="6">午休時間</td></tr>`;
+            html += `<tr><td>${i+1}<span class="time-label">${timeSlots[i].start}</span></td>`;
+            row.forEach(cell => { html += `<td>${cell}</td>`; });
+            html += `</tr>`;
+        });
+        
+        html += `</tbody></table>`;
+        document.getElementById('tableTarget').innerHTML = html;
     }
 
-    // 3. 核心計時器與動態更新
-    function updateApp() {
-        const schoolTime = getSchoolTime();
-        const h = schoolTime.getHours();
-        const m = schoolTime.getMinutes();
-        const s = schoolTime.getSeconds();
-        const totalSeconds = h * 3600 + m * 60 + s;
-        const day = schoolTime.getDay(); // 1-5
+    // 5. 動態邏輯 (每一秒執行一次)
+    function updateLogic() {
+        const now = new Date(new Date().getTime() + timeOffset * 1000);
+        const h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+        const day = now.getDay(); // 1(一)-5(五)
+        const totalSec = h * 3600 + m * 60 + s;
 
-        // 更新時鐘顯示
-        document.getElementById('timer').innerText = 
-            `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        document.getElementById('timer').innerText = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        document.getElementById('offsetDisplay').innerText = `校對: ${timeOffset}s`;
 
-        let currentPeriodIdx = -1;
-        let nextPeriodIdx = -1;
-
+        let currentIdx = -1;
         timeSlots.forEach((slot, i) => {
             const [sH, sM] = slot.start.split(':').map(Number);
             const [eH, eM] = slot.end.split(':').map(Number);
-            const startSec = sH * 3600 + sM * 60;
-            const endSec = eH * 3600 + eM * 60;
+            const startS = sH * 3600 + sM * 60, endS = eH * 3600 + eM * 60;
 
-            if (totalSeconds >= startSec && totalSeconds < endSec) {
-                currentPeriodIdx = i;
-                const remain = endSec - totalSeconds;
-                document.getElementById('status').innerText = `🔔 ${slot.name} 進行中`;
-                document.getElementById('nextHint').innerText = `距離下課還有 ${Math.floor(remain/60)}分${remain%60}秒`;
-            } else if (totalSeconds < startSec && nextPeriodIdx === -1) {
-                nextPeriodIdx = i;
-                const wait = startSec - totalSeconds;
-                document.getElementById('status').innerText = `☕ 下課休息中`;
-                document.getElementById('nextHint').innerText = `距離 ${slot.name} 還有 ${Math.floor(wait/60)}分${wait%60}秒`;
+            if (totalSec >= startS && totalSec < endS) {
+                currentIdx = i;
+                const rem = endS - totalSec;
+                document.getElementById('status').innerText = `🔔 正在上：${slot.name}`;
+                document.getElementById('nextHint').innerText = `距離下課還有 ${Math.floor(rem/60)}分${rem%60}秒`;
             }
         });
 
-        // 如果放學了
-        if (currentPeriodIdx === -1 && nextPeriodIdx === -1) {
-            document.getElementById('status').innerText = "🏠 放學囉 / 尚未上課";
+        if (currentIdx === -1) {
+            document.getElementById('status').innerText = "☕ 下課休息 / 非上課時間";
             document.getElementById('nextHint').innerText = "";
         }
 
-        // 高亮表格 (僅在每分鐘更新一次或初始載入)
-        refreshTableHighlight(currentPeriodIdx, day);
-    }
-
-    function refreshTableHighlight(periodIdx, day) {
+        // 高亮當前行與格
         document.querySelectorAll('tr').forEach(r => r.classList.remove('active-row'));
-        if (periodIdx !== -1 && day >= 1 && day <= 5) {
+        document.querySelectorAll('td').forEach(c => c.classList.remove('active-cell'));
+        
+        if (currentIdx !== -1 && day >= 1 && day <= 5) {
             const rows = document.querySelectorAll('#timetable tbody tr:not(.break-row)');
-            if(rows[periodIdx]) rows[periodIdx].classList.add('active-row');
+            const currentRow = rows[currentIdx];
+            currentRow.classList.add('active-row');
+            currentRow.cells[day].classList.add('active-cell');
         }
     }
 
-    // 啟動
-    document.getElementById('offsetDisplay').innerText = `校對: ${timeOffset}s`;
-    setInterval(updateApp, 1000); // 每一秒跑一次，確保倒數流暢
-    
-    // (這裡接續之前的表格生成渲染代碼 renderTable...)
+    window.onload = init;
 </script>
 </body>
 </html>
