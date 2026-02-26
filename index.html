@@ -1,15 +1,68 @@
-{
-  "name": "電一乙課表",
-  "short_name": "課表",
-  "start_url": "index.html",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#4a90e2",
-  "icons": [
-    {
-      "src": "https://via.placeholder.com/192",
-      "sizes": "192x192",
-      "type": "image/png"
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>電一乙 課表 PWA</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4a90e2">
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
+        h2 { text-align: center; color: #333; }
+        .schedule-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ddd; padding: 12px 8px; text-align: center; font-size: 14px; }
+        th { background-color: #4a90e2; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .current-day { background-color: #fff9c4 !important; font-weight: bold; border: 2px solid #fbc02d; }
+        .time { font-size: 11px; color: #666; display: block; }
+    </style>
+</head>
+<body>
+
+<h2>114學年度第2學期 課表<br><small>電一乙 (導師: 洪坤聰)</small></h2>
+
+<div class="schedule-container">
+    <table id="timetable">
+        <thead>
+            <tr>
+                <th>節</th>
+                <th>一</th>
+                <th>二</th>
+                <th>三</th>
+                <th>四</th>
+                <th>五</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>1<span class="time">08:10</span></td><td>全民國防</td><td>國語文</td><td>積木程式</td><td>健康護理</td><td>基本電學</td></tr>
+            <tr><td>2<span class="time">09:10</span></td><td>音樂</td><td>國語文</td><td>積木程式</td><td>閩南語文</td><td>基本電學</td></tr>
+            <tr><td>3<span class="time">10:10</span></td><td>應用英文</td><td>英語文</td><td>積木程式</td><td>生活科技</td><td>物理</td></tr>
+            <tr><td>4<span class="time">11:10</span></td><td>數學</td><td>數學</td><td>歷史</td><td>生活科技</td><td>歷史</td></tr>
+            <tr><td colspan="6" style="background:#eee; font-size:12px;">午休</td></tr>
+            <tr><td>5<span class="time">13:10</span></td><td>基本電學實習</td><td>物理</td><td>週會/聯課</td><td>國語文</td><td>英語文</td></tr>
+            <tr><td>6<span class="time">14:10</span></td><td>基本電學實習</td><td>體育</td><td>週會/聯課</td><td>藝術生活</td><td>數學</td></tr>
+            <tr><td>7<span class="time">15:20</span></td><td>基本電學實習</td><td>基本電學</td><td>班會</td><td>數學</td><td>體育</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // 自動高亮今天的日期 (1-5)
+    const day = new Date().getDay();
+    if (day >= 1 && day <= 5) {
+        const rows = document.querySelectorAll('tr');
+        rows.forEach(row => {
+            const cell = row.cells[day];
+            if (cell) cell.classList.add('current-day');
+        });
+        document.querySelectorAll('th')[day].classList.add('current-day');
     }
-  ]
-}
+
+    // 註冊 Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js');
+    }
+</script>
+</body>
+</html>
