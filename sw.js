@@ -1,47 +1,32 @@
-// 每次你修改 data.js 或 index.html 後，請把 v1 改成 v2, v3...
-const CACHE_NAME = 'school-timetable-v99';
+// 班級課表資料庫
+const allSchedules = {
+    "電一乙": [
+        ["全民國防(陳怡今)", "國語文(陳美偵)", "積木程式(謝秀宏)", "健康護理(李怡蓉)", "基本電學(楊森評)"],
+        ["音樂(鐘悅綾)", "國語文(陳美偵)", "積木程式(謝秀宏)", "閩南語文(陳怡今)", "基本電學(楊森評)"],
+        ["應用英文(張琬美)", "英語文(張琬美)", "積木程式(謝秀宏)", "生活科技(楊森評)", "物理(龔榮志)"],
+        ["數學(洪坤聰)", "數學(洪坤聰)", "歷史(陳豔顏)", "生活科技(楊森評)", "歷史(陳豔顏)"],
+        ["基電實習(李冠章)", "物理(龔榮志)", "週會/聯課", "國語文(陳美偵)", "英語文(張琬美)"],
+        ["基電實習(李冠章)", "體育(張惠珍)", "週會/聯課", "藝術生活(董怡芳)", "數學(洪坤聰)"],
+        ["基電實習(李冠章)", "基本電學(楊森評)", "班會(洪坤聰)", "數學(洪坤聰)", "體育(張惠珍)"]
+    ],
+    "範例班級": [
+        ["科目A(老師1)", "科目B(老師2)", "科目C(老師3)", "科目D(老師4)", "科目E(老師5)"],
+        ["科目A(老師1)", "科目B(老師2)", "科目C(老師3)", "科目D(老師4)", "科目E(老師5)"],
+        ["科目A(老師1)", "科目B(老師2)", "科目C(老師3)", "科目D(老師4)", "科目E(老師5)"],
+        ["科目A(老師1)", "科目B(老師2)", "科目C(老師3)", "科目D(老師4)", "科目E(老師5)"],
+        ["科目A(老師1)", "科目B(老師2)", "科目C(老師3)", "科目D(老師4)", "科目E(老師5)"],
+        ["科目A(老師1)", "科目B(老師2)", "科目C(老師3)", "科目D(老師4)", "科目E(老師5)"],
+        ["科目A(老師1)", "科目B(老師2)", "科目C(老師3)", "科目D(老師4)", "科目E(老師5)"]
+    ]
+};
 
-const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './data.js',
-  './manifest.json',
-  // 如果你有放小圖示 icon.png，也請加在這裡
+// 學校節次時間定義 (24小時制)
+const timeSlots = [
+    { name: "第一節", start: "08:10", end: "09:00" },
+    { name: "第二節", start: "09:10", end: "10:00" },
+    { name: "第三節", start: "10:10", end: "11:00" },
+    { name: "第四節", start: "11:10", end: "12:00" },
+    { name: "第五節", start: "13:10", end: "14:00" },
+    { name: "第六節", start: "14:10", end: "15:00" },
+    { name: "第七節", start: "15:20", end: "16:10" }
 ];
-
-// 1. 安裝：將檔案存入手機快取
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('課表資源已快取');
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
-  );
-  self.skipWaiting(); // 強制跳過等待，立即啟用新版
-});
-
-// 2. 激活：刪除舊版本的快取，釋放空間
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            console.log('清理舊版快取:', key);
-            return caches.delete(key);
-          }
-        })
-      );
-    })
-  );
-});
-
-// 3. 攔截請求：沒網路時也能讀取課表
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      // 優先使用快取，如果快取沒有則連網抓取
-      return response || fetch(event.request);
-    })
-  );
-});
