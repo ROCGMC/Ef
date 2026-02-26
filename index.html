@@ -2,124 +2,115 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>校園動態課表系統</title>
-    <link rel="manifest" href="manifest.json">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>電一乙 動態課表 V3</title>
     <style>
-        :root { --primary: #2c3e50; --accent: #f1c40f; --bg: #f4f7f6; --card: #ffffff; }
-        body { font-family: -apple-system, "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; overflow-x: hidden; }
+        :root { --primary: #2196F3; --accent: #FFEB3B; --bg: #f5f7fa; --dark: #2c3e50; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; }
         
-        /* 右上角選單按鈕 */
-        .menu-btn { position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.1); border: none; color: white; font-size: 24px; cursor: pointer; z-index: 100; padding: 5px 10px; border-radius: 8px; }
-
         /* 儀表板 */
-        .dashboard { background: var(--primary); color: white; padding: 30px 15px; border-radius: 20px; text-align: center; margin-bottom: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); position: relative; }
-        #status-text { font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px; }
-        #countdown { font-size: 4.5rem; font-weight: bold; color: var(--accent); margin: 5px 0; font-family: 'Courier New', monospace; }
-        .school-time { font-size: 0.8rem; color: #95a5a6; }
-
-        /* 校對控制 */
-        .cal-box { display: flex; justify-content: center; gap: 10px; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; }
-        .btn-s { background: #455a64; border: none; color: white; padding: 5px 12px; border-radius: 5px; font-size: 12px; }
-
-        /* 選單與彈窗 */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; animation: fadeIn 0.3s; }
-        .modal-content { background: #2c3e50; color: white; border-radius: 20px; padding: 25px; max-width: 450px; margin: 40px auto; position: relative; width: 85%; }
-        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; }
+        .dashboard { background: var(--dark); color: white; padding: 25px 15px; border-radius: 20px; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: relative; }
+        #countdown { font-size: 4rem; font-weight: bold; color: var(--accent); margin: 5px 0; font-family: monospace; }
+        #status-text { font-size: 1.1rem; opacity: 0.9; }
         
-        /* 功能列 */
-        .setting-item { display: flex; justify-content: space-between; align-items: center; margin: 20px 0; padding-bottom: 10px; border-bottom: 1px solid #3e4f5f; }
-        .search-input { width: 100%; padding: 12px; border-radius: 8px; border: none; margin: 15px 0; font-size: 16px; }
-        .teacher-result { background: #34495e; padding: 15px; border-radius: 12px; margin-top: 15px; border-left: 5px solid var(--accent); }
+        /* 右上角選單 */
+        .menu-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: white; }
 
-        /* 課表表格 */
-        .table-card { background: var(--card); border-radius: 15px; overflow-x: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        table { width: 100%; border-collapse: collapse; min-width: 500px; }
-        th, td { padding: 12px 5px; text-align: center; border-bottom: 1px solid #f0f0f0; }
-        th { background: #34495e; color: white; font-weight: normal; font-size: 14px; }
-        .active-cell { background-color: var(--accent) !important; color: #000 !important; font-weight: bold; border-radius: 6px; }
-        .teacher-name { font-size: 10px; color: #7f8c8d; display: block; }
+        /* 表格樣式 */
+        .table-card { background: white; border-radius: 15px; overflow-x: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; min-width: 450px; }
+        th, td { border: 1px solid #eee; padding: 12px 5px; text-align: center; font-size: 14px; transition: 0.3s; }
+        th { background: #34495e; color: white; }
+        .active-cell { background-color: var(--accent) !important; font-weight: bold; color: #000; box-shadow: inset 0 0 5px rgba(0,0,0,0.2); }
+        .teacher { font-size: 11px; color: #888; display: block; }
         
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        /* 彈窗 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; }
+        .modal-body { background: white; margin: 30px auto; padding: 20px; width: 85%; max-width: 400px; border-radius: 20px; color: #333; }
+        .modal-body h3 { margin-top: 0; }
+        input[type="text"] { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
+        
+        /* 編輯中狀態 */
+        [contenteditable="true"] { background: #fffde7; outline: 2px solid var(--primary); }
+        .btn-group { display: flex; gap: 5px; justify-content: center; margin-top: 10px; }
+        button { padding: 10px 15px; border-radius: 8px; border: none; cursor: pointer; }
+        .btn-save { background: #4caf50; color: white; }
+        .btn-cancel { background: #f44336; color: white; }
     </style>
 </head>
 <body>
 
-    <button class="menu-btn" onclick="openModal('menuModal')">☰</button>
+<div class="dashboard">
+    <button class="menu-btn" onclick="toggleModal('menuModal')">⚙️</button>
+    <div id="status-text">載入中...</div>
+    <div id="countdown">00:00</div>
+    <div style="font-size: 12px; color: #95a5a6;">
+        校對: <span id="offLab">0</span>s | <span id="realClock">00:00:00</span>
+    </div>
+    <div class="btn-group">
+        <button onclick="adjTime(-1)" style="padding:4px 8px; font-size:11px;">-1s</button>
+        <button onclick="adjTime(1)" style="padding:4px 8px; font-size:11px;">+1s</button>
+    </div>
+</div>
 
-    <div class="dashboard">
-        <div id="status-text">系統讀取中...</div>
-        <div id="countdown">00:00</div>
-        <div class="school-time">校準時間：<span id="real-clock">00:00:00</span></div>
-        <div class="cal-box">
-            <button class="btn-s" onclick="adj(-1)">-1s</button>
-            <span id="offset-lab" style="font-size:12px; align-self:center;">校對: 0s</span>
-            <button class="btn-s" onclick="adj(1)">+1s</button>
+<div class="table-card" id="tableBox"></div>
+
+<div id="menuModal" class="modal">
+    <div class="modal-body">
+        <h3>系統功能</h3>
+        <label><input type="checkbox" id="wakeLockCheck" onchange="toggleWake(this.checked)"> 螢幕長亮 (Wake Lock)</label>
+        <hr>
+        <h4>🔍 找老師 (搜尋動態)</h4>
+        <input type="text" id="tQuery" placeholder="輸入老師姓名..." oninput="searchT()">
+        <div id="searchRes" style="color:var(--primary); font-weight:bold; min-height:20px;"></div>
+        <hr>
+        <h4>🛠️ 課表編輯</h4>
+        <button id="editBtn" onclick="enterEdit()" style="width:100%; background:var(--dark); color:white;">✏️ 進入編輯模式</button>
+        <div id="editControls" style="display:none;" class="btn-group">
+            <button class="btn-save" onclick="saveData()">💾 儲存並更新</button>
+            <button class="btn-cancel" onclick="exitEdit()">取消</button>
         </div>
+        <br>
+        <button onclick="toggleModal('menuModal')" style="width:100%; margin-top:10px;">關閉選單</button>
     </div>
+</div>
 
-    <div style="text-align:center; margin-bottom:15px;">
-        <select id="classPicker" onchange="changeClass()" style="width:90%; padding:10px; border-radius:8px; border:1px solid #ddd;"></select>
-    </div>
-
-    <div class="table-card" id="tableBox"></div>
-
-    <div id="menuModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeModal('menuModal')">×</span>
-            <h3>功能設定</h3>
-            <div class="setting-item">
-                <span>🔅 螢幕長亮不關閉</span>
-                <input type="checkbox" id="wakeLockCheck" onchange="toggleWakeLock(this.checked)" style="width:20px; height:20px;">
-            </div>
-            <button onclick="openSearch()" style="width:100%; padding:15px; background:var(--accent); color:#000; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">🔍 搜尋教師動態</button>
-        </div>
-    </div>
-
-    <div id="searchModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeModal('searchModal')">×</span>
-            <h3>教師位置搜尋</h3>
-            <input type="text" id="teacherInp" class="search-input" placeholder="請輸入老師全名..." oninput="doSearch()">
-            <div id="searchRes"></div>
-        </div>
-    </div>
-
-<script src="data.js"></script>
 <script>
-    // --- 初始化 ---
-    let offset = parseInt(localStorage.getItem('offset')) || 0;
+    // 預設課表資料 (JSON)
+    const defaultData = [
+        ["全民國防(陳怡今)", "國語文(陳美偵)", "積木程式(謝秀宏)", "健康護理(李怡蓉)", "基本電學(楊森評)"],
+        ["音樂(鐘悅綾)", "國語文(陳美偵)", "積木程式(謝秀宏)", "閩南語文(陳怡今)", "基本電學(楊森評)"],
+        ["應用英文(張琬美)", "英語文(張琬美)", "積木程式(謝秀宏)", "生活科技(楊森評)", "物理(龔榮志)"],
+        ["數學(洪坤聰)", "數學(洪坤聰)", "歷史(陳豔顏)", "生活科技(楊森評)", "歷史(陳豔顏)"],
+        ["基電實習(李冠章)", "物理(龔榮志)", "週會/聯課", "國語文(陳美偵)", "英語文(張琬美)"],
+        ["基電實習(李冠章)", "體育(張惠珍)", "週會/聯課", "藝術生活(董怡芳)", "數學(洪坤聰)"],
+        ["基電實習(李冠章)", "基本電學(楊森評)", "班會(洪坤聰)", "數學(洪坤聰)", "體育(張惠珍)"]
+    ];
+
+    const slots = [
+        { s: "08:10", e: "09:00" }, { s: "09:10", e: "10:00" },
+        { s: "10:10", e: "11:00" }, { s: "11:10", e: "12:00" },
+        { s: "13:10", e: "14:00" }, { s: "14:10", e: "15:00" },
+        { s: "15:20", e: "16:10" }
+    ];
+
+    let myData = JSON.parse(localStorage.getItem('user_schedule')) || defaultData;
+    let timeOffset = parseInt(localStorage.getItem('time_offset')) || 0;
     let wakeLock = null;
 
     function init() {
-        if (typeof allSchedules === 'undefined') {
-            document.getElementById('tableBox').innerHTML = "<p style='text-align:center;padding:20px;'>找不到 data.js</p>";
-            return;
-        }
-        const p = document.getElementById('classPicker');
-        Object.keys(allSchedules).forEach(k => {
-            let o = document.createElement('option'); o.value = k; o.text = k; p.appendChild(o);
-        });
-        p.value = localStorage.getItem('lastClass') || "電一乙";
-        
-        render();
+        renderTable();
         setInterval(tick, 1000);
     }
 
-    // --- 核心邏輯 ---
-    function adj(v) { offset += v; localStorage.setItem('offset', offset); }
-    function changeClass() { localStorage.setItem('lastClass', document.getElementById('classPicker').value); render(); }
-
-    function render() {
-        const cls = document.getElementById('classPicker').value;
-        const d = allSchedules[cls];
+    function renderTable() {
         let h = `<table><tr><th>節</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th></tr>`;
-        d.forEach((r, i) => {
-            if (i === 4) h += `<tr style="background:#f9f9f9; font-size:12px; color:#999;"><td colspan="6">午休時間</td></tr>`;
-            h += `<tr><td style="font-size:12px; color:#999;">${i+1}</td>`;
-            r.forEach(c => {
-                let [s, t] = c.split('(');
-                h += `<td><b>${s}</b>${t ? `<span class="teacher-name">${t.replace(')','')}</span>` : ""}</td>`;
+        myData.forEach((row, pIdx) => {
+            if (pIdx === 4) h += `<tr style="background:#f9f9f9;font-size:12px;color:#999"><td colspan="6">午休 12:00 - 13:10</td></tr>`;
+            h += `<tr><td>${pIdx + 1}</td>`;
+            row.forEach((cell, dIdx) => {
+                let [sub, tea] = cell.split('(');
+                h += `<td class="s-cell" data-p="${pIdx}" data-d="${dIdx}">${sub}${tea ? `<span class="teacher">(${tea}</span>` : ""}</td>`;
             });
             h += `</tr>`;
         });
@@ -127,93 +118,90 @@
     }
 
     function tick() {
-        const now = new Date(Date.now() + offset * 1000);
+        const now = new Date(Date.now() + timeOffset * 1000);
         const sec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
         const day = now.getDay();
-        document.getElementById('real-clock').innerText = now.toTimeString().split(' ')[0];
-        document.getElementById('offset-lab').innerText = `校對: ${offset}s`;
+        document.getElementById('realClock').innerText = now.toTimeString().split(' ')[0];
+        document.getElementById('offLab').innerText = timeOffset;
 
-        let cur = -1, cd = "--:--", st = "🏠 放學/休息時間";
-
-        timeSlots.forEach((o, i) => {
-            const start = toS(o.start), end = toS(o.end);
-            if (sec >= start && sec < end) {
-                cur = i; st = `🔔 正在上：${o.name}`;
-                let r = end - sec; cd = `${Math.floor(r/60)}:${String(r%60).padStart(2,'0')}`;
-            } else if (sec < start && cd === "--:--") {
-                let w = start - sec; st = `☕ 下課中，待會：${o.name}`;
-                cd = `${Math.floor(w/60)}:${String(w%60).padStart(2,'0')}`;
+        let cur = -1, cd = "--:--", st = "放學/休息中";
+        slots.forEach((o, i) => {
+            const startS = toSec(o.s), endS = toSec(o.e);
+            if (sec >= startS && sec < endS) {
+                cur = i; st = `正在上：第 ${i + 1} 節`;
+                let r = endS - sec; cd = `${Math.floor(r / 60)}:${String(r % 60).padStart(2, '0')}`;
+            } else if (sec < startS && cd === "--:--") {
+                let w = startS - sec; st = `距離下一節課`;
+                cd = `${Math.floor(w / 60)}:${String(w % 60).padStart(2, '0')}`;
             }
         });
 
-        document.getElementById('status-text').innerText = st;
         document.getElementById('countdown').innerText = cd;
+        document.getElementById('status-text').innerText = st;
 
-        // 高亮
         document.querySelectorAll('td').forEach(c => c.classList.remove('active-cell'));
         if (cur !== -1 && day >= 1 && day <= 5) {
-            const rows = document.querySelectorAll('tr');
-            const targetRow = rows[cur + (cur >= 4 ? 2 : 1)];
-            if(targetRow) targetRow.cells[day].classList.add('active-cell');
+            const rowIdx = cur + (cur >= 4 ? 2 : 1);
+            const targetRow = document.querySelectorAll('tr')[rowIdx];
+            if (targetRow) targetRow.cells[day].classList.add('active-cell');
         }
     }
 
-    function toS(t) { const [h, m] = t.split(':'); return h * 3600 + m * 60; }
-
-    // --- 功能彈窗 ---
-    function openModal(id) { document.getElementById(id).style.display = 'block'; }
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-    function openSearch() { closeModal('menuModal'); openModal('searchModal'); }
-
-    // --- 螢幕長亮 (Wake Lock) ---
-    async function toggleWakeLock(on) {
-        if (on) {
-            try {
-                wakeLock = await navigator.wakeLock.request('screen');
-                console.log("Wake Lock Active");
-            } catch (err) {
-                alert("此設備不支援螢幕長亮");
-                document.getElementById('wakeLockCheck').checked = false;
-            }
-        } else if (wakeLock) {
-            wakeLock.release();
-            wakeLock = null;
-        }
+    // 編輯邏輯
+    function enterEdit() {
+        document.querySelectorAll('.s-cell').forEach(c => c.contentEditable = "true");
+        document.getElementById('editBtn').style.display = 'none';
+        document.getElementById('editControls').style.display = 'flex';
+        toggleModal('menuModal'); // 暫時關閉選單讓用戶編輯表格
     }
 
-    // --- 教師搜尋 ---
-    function doSearch() {
-        const q = document.getElementById('teacherInp').value;
-        const res = document.getElementById('searchRes');
-        if (!q) { res.innerHTML = ""; return; }
-
-        let found = [];
-        Object.keys(allSchedules).forEach(cls => {
-            allSchedules[cls].forEach((row, pi) => {
-                row.forEach((cell, di) => {
-                    if (cell.includes(q)) found.push({ cls, pi, di: di + 1 });
-                });
-            });
+    function saveData() {
+        const newData = Array.from({ length: 7 }, () => Array(5).fill(""));
+        document.querySelectorAll('.s-cell').forEach(c => {
+            newData[c.dataset.p][c.dataset.d] = c.innerText.trim();
         });
-
-        if (found.length === 0) { res.innerHTML = "找不到資料"; return; }
-
-        const now = new Date(Date.now() + offset * 1000);
-        const d = now.getDay();
-        const s = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-
-        let curPos = found.find(f => f.di === d && s >= toS(timeSlots[f.pi].start) && s < toS(timeSlots[f.pi].end));
-        let nextPos = found.filter(f => f.di === d && toS(timeSlots[f.pi].start) > s).sort((a,b) => a.pi - b.pi)[0];
-
-        res.innerHTML = `
-            <div class="teacher-result">
-                <h4>👨‍🏫 ${q} 老師</h4>
-                <p>📍 目前：${curPos ? `<b style="color:var(--accent)">${curPos.cls}</b>` : "無課 / 辦公室"}</p>
-                <p>⏭️ 下一節：${nextPos ? `<b>${nextPos.cls}</b>` : "今日無後續課程"}</p>
-            </div>
-        `;
+        myData = newData;
+        localStorage.setItem('user_schedule', JSON.stringify(newData));
+        exitEdit();
+        renderTable();
+        alert("課表已儲存！");
     }
 
+    function exitEdit() {
+        document.querySelectorAll('.s-cell').forEach(c => c.contentEditable = "false");
+        document.getElementById('editBtn').style.display = 'block';
+        document.getElementById('editControls').style.display = 'none';
+    }
+
+    // 找老師邏輯
+    function searchT() {
+        const q = document.getElementById('tQuery').value;
+        if (!q) return document.getElementById('searchRes').innerText = "";
+        const now = new Date(Date.now() + timeOffset * 1000);
+        const day = now.getDay();
+        let found = "此時段沒課";
+        
+        // 搜尋目前節次
+        const sec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+        let curP = -1;
+        slots.forEach((o, i) => { if(sec >= toSec(o.s) && sec < toSec(o.e)) curP = i; });
+
+        if(curP !== -1 && day >= 1 && day <= 5) {
+            if(myData[curP][day-1].includes(q)) found = `📍 正在本班上課`;
+            else found = `🔍 搜尋中... (此功能需掃描全校資料)`;
+        }
+        document.getElementById('searchRes').innerText = found;
+    }
+
+    // 工具
+    async function toggleWake(on) {
+        if(on) { try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){} }
+        else if(wakeLock) { wakeLock.release(); wakeLock=null; }
+    }
+    function toSec(t) { const [h, m] = t.split(':'); return h * 3600 + m * 60; }
+    function adjTime(v) { timeOffset += v; localStorage.setItem('time_offset', timeOffset); }
+    function toggleModal(id) { const m = document.getElementById(id); m.style.display = (m.style.display==='block'?'none':'block'); }
+    
     window.onload = init;
 </script>
 </body>
