@@ -5,41 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>校園動態課表 PWA</title>
     <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2196F3">
     <style>
-        :root { --primary: #2196F3; --accent: #FFEB3B; }
-        body { font-family: sans-serif; background: #f4f4f9; margin: 0; padding: 15px; color: #333; }
+        :root { --primary: #2196F3; --accent: #FFEB3B; --bg: #f4f4f9; }
+        body { font-family: -apple-system, "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #333; }
         
-        /* 儀表板樣式 */
-        .dashboard { background: #333; color: white; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        #timer { font-size: 2rem; font-weight: bold; color: var(--accent); margin: 5px 0; }
-        #status { font-size: 1.1rem; }
-        #nextHint { font-size: 0.9rem; color: #bbb; margin-top: 5px; }
+        /* 儀表板 */
+        .dashboard { background: #333; color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        #timer { font-size: 2.5rem; font-weight: bold; color: var(--accent); margin: 5px 0; font-family: monospace; }
+        #status { font-size: 1.2rem; font-weight: 500; }
+        #nextHint { font-size: 0.9rem; color: #bbb; margin-top: 8px; height: 1.2em; }
 
-        /* 校對按鈕 */
-        .calibration { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
-        .cal-btn { background: #555; border: none; color: white; padding: 5px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; }
-        
-        /* 下拉選單 */
-        .selector-box { margin-bottom: 15px; text-align: center; }
-        select { width: 100%; max-width: 300px; padding: 10px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; }
+        /* 校對區 */
+        .calibration { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 15px; border-top: 1px solid #444; padding-top: 15px; }
+        .cal-btn { background: #555; border: none; color: white; padding: 6px 10px; border-radius: 5px; font-size: 12px; cursor: pointer; transition: 0.2s; }
+        .cal-btn:active { background: #777; transform: scale(0.95); }
+        #offsetDisplay { font-size: 12px; color: #aaa; min-width: 70px; }
 
-        /* 課表樣式 */
-        .table-container { overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        table { width: 100%; border-collapse: collapse; min-width: 500px; }
-        th, td { border: 1px solid #eee; padding: 12px 8px; text-align: center; }
-        th { background: var(--primary); color: white; }
+        /* 選單 */
+        .selector-box { margin-bottom: 15px; display: flex; justify-content: center; }
+        select { width: 100%; max-width: 350px; padding: 12px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+        /* 課表表格 */
+        .table-container { overflow-x: auto; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; min-width: 500px; table-layout: fixed; }
+        th, td { border: 1px solid #eee; padding: 10px 5px; text-align: center; word-break: break-all; }
+        th { background: var(--primary); color: white; font-weight: normal; }
         
+        /* 內容字體 */
+        .subject-text { font-size: 14px; font-weight: bold; display: block; margin-bottom: 2px; }
+        .teacher-label { font-size: 11px; color: #777; display: block; }
+        .time-label { font-size: 10px; color: #999; display: block; margin-top: 2px; }
+
         /* 動態高亮 */
-        .active-row { background-color: #fffde7 !important; border: 2px solid #fbc02d !important; font-weight: bold; }
-        .active-cell { background-color: var(--accent) !important; color: black; border-radius: 4px; }
-        .time-label { font-size: 10px; color: #888; display: block; }
-        .break-row { background: #f9f9f9; color: #999; font-size: 12px; }
+        .active-row { background-color: #fffde7 !important; }
+        .active-cell { background-color: var(--accent) !important; color: black; border: 2px solid #fbc02d !important; border-radius: 4px; position: relative; }
+        .active-cell .teacher-label { color: #555; }
+        
+        .break-row { background: #f9f9f9; color: #888; font-size: 12px; height: 30px; }
     </style>
 </head>
 <body>
 
 <div class="dashboard">
-    <div id="status">讀取中...</div>
+    <div id="status">載入中...</div>
     <div id="timer">00:00:00</div>
     <div id="nextHint"></div>
     <div class="calibration">
@@ -55,10 +64,13 @@
     <select id="classSelect" onchange="changeClass()"></select>
 </div>
 
-<div class="table-container" id="tableTarget"></div>
+<div class="table-container" id="tableTarget">
+    <p style="text-align:center; padding:20px;">正在讀取課表資料...</p>
+</div>
 
 <script src="data.js"></script>
 <script>
+    // 1. 定義節次時間
     const timeSlots = [
         { name: "第一節", start: "08:10", end: "09:00" },
         { name: "第二節", start: "09:10", end: "10:00" },
@@ -71,8 +83,13 @@
 
     let timeOffset = parseInt(localStorage.getItem('timeOffset')) || 0;
 
-    // 1. 初始化班級選單
-    function init() {
+    // 2. 初始化應用程式
+    function initApp() {
+        if (typeof allSchedules === 'undefined') {
+            document.getElementById('tableTarget').innerHTML = "<div style='padding:20px; color:red; text-align:center;'>錯誤：找不到 data.js 或格式錯誤。</div>";
+            return;
+        }
+
         const select = document.getElementById('classSelect');
         Object.keys(allSchedules).forEach(cls => {
             const opt = document.createElement('option');
@@ -91,30 +108,43 @@
         setInterval(updateLogic, 1000);
     }
 
-    // 2. 切換班級
+    // 3. 班級切換
     function changeClass() {
         localStorage.setItem('selectedClass', document.getElementById('classSelect').value);
         renderTable();
         updateLogic();
     }
 
-    // 3. 校對時間
+    // 4. 校對功能
     function adjustOffset(s) {
         timeOffset += s;
         localStorage.setItem('timeOffset', timeOffset);
         document.getElementById('offsetDisplay').innerText = `校對: ${timeOffset}s`;
+        updateLogic();
     }
 
-    // 4. 繪製表格
+    // 5. 渲染課表
     function renderTable() {
         const className = document.getElementById('classSelect').value;
+        if (!className) return;
+
         const data = allSchedules[className];
-        let html = `<table id="timetable"><thead><tr><th>節</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th></tr></thead><tbody>`;
+        let html = `<table id="timetable"><thead><tr><th style="width:15%">節</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th></tr></thead><tbody>`;
         
         data.forEach((row, i) => {
-            if (i === 4) html += `<tr class="break-row"><td colspan="6">午休時間</td></tr>`;
+            if (i === 4) { // 午休在第四節後
+                html += `<tr class="break-row"><td colspan="6">午休 (12:00 - 13:10)</td></tr>`;
+            }
+            
             html += `<tr><td>${i+1}<span class="time-label">${timeSlots[i].start}</span></td>`;
-            row.forEach(cell => { html += `<td>${cell}</td>`; });
+            row.forEach(cellData => {
+                let [subject, teacher] = cellData.split('(');
+                teacher = teacher ? teacher.replace(')', '') : "";
+                html += `<td>
+                            <span class="subject-text">${subject}</span>
+                            ${teacher ? `<span class="teacher-label">${teacher}</span>` : ""}
+                         </td>`;
+            });
             html += `</tr>`;
         });
         
@@ -122,17 +152,20 @@
         document.getElementById('tableTarget').innerHTML = html;
     }
 
-    // 5. 動態邏輯 (每一秒執行一次)
+    // 6. 每秒運行的動態邏輯
     function updateLogic() {
         const now = new Date(new Date().getTime() + timeOffset * 1000);
         const h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
-        const day = now.getDay(); // 1(一)-5(五)
+        const day = now.getDay(); // 0-6 (日-六)
         const totalSec = h * 3600 + m * 60 + s;
 
+        // 更新時鐘與校對顯示
         document.getElementById('timer').innerText = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
         document.getElementById('offsetDisplay').innerText = `校對: ${timeOffset}s`;
 
         let currentIdx = -1;
+        let nextIdx = -1;
+
         timeSlots.forEach((slot, i) => {
             const [sH, sM] = slot.start.split(':').map(Number);
             const [eH, eM] = slot.end.split(':').map(Number);
@@ -142,29 +175,40 @@
                 currentIdx = i;
                 const rem = endS - totalSec;
                 document.getElementById('status').innerText = `🔔 正在上：${slot.name}`;
-                document.getElementById('nextHint').innerText = `距離下課還有 ${Math.floor(rem/60)}分${rem%60}秒`;
+                document.getElementById('nextHint').innerText = `距離下課剩餘 ${Math.floor(rem/60)}分${rem%60}秒`;
+            } else if (totalSec < startS && nextIdx === -1) {
+                nextIdx = i;
+                const wait = startS - totalSec;
+                document.getElementById('status').innerText = `☕ 下課休息中`;
+                document.getElementById('nextHint').innerText = `距離 ${slot.name} 還有 ${Math.floor(wait/60)}分${wait%60}秒`;
             }
         });
 
-        if (currentIdx === -1) {
-            document.getElementById('status').innerText = "下課/放學時間";
+        if (currentIdx === -1 && nextIdx === -1) {
+            document.getElementById('status').innerText = "🏠 放學囉 / 尚未上課";
             document.getElementById('nextHint').innerText = "";
         }
 
-        // 高亮當前行與格
+        // 處理表格高亮
         document.querySelectorAll('tr').forEach(r => r.classList.remove('active-row'));
         document.querySelectorAll('td').forEach(c => c.classList.remove('active-cell'));
         
         if (currentIdx !== -1 && day >= 1 && day <= 5) {
             const rows = document.querySelectorAll('#timetable tbody tr:not(.break-row)');
             const currentRow = rows[currentIdx];
-            currentRow.classList.add('active-row');
-            currentRow.cells[day].classList.add('active-cell');
+            if (currentRow) {
+                currentRow.classList.add('active-row');
+                currentRow.cells[day].classList.add('active-cell');
+            }
         }
     }
 
-    window.onload = init;
+    // 7. Service Worker 註冊
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').then(() => console.log("PWA Ready"));
+    }
+
+    window.onload = initApp;
 </script>
 </body>
 </html>
-
