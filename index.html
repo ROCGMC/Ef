@@ -3,238 +3,262 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智慧動態課表系統 V4</title>
+    <title>智慧動態課表終端 V4</title>
     <link href="https://fonts.cdnfonts.com/css/digital-7-mono" rel="stylesheet">
     <style>
-        :root { --primary: #2196F3; --accent: #00ff41; --bg: #000; --red: #ff3b30; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #eee; }
+        :root { --primary: #2196F3; --accent: #00ff41; --bg: #000; --red: #ff3b30; --panel: #1a1a1a; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #eee; overflow-x: hidden; }
         
-        .dashboard { background: #000; padding: 20px 15px; border-radius: 20px; text-align: center; margin-bottom: 15px; border: 2px solid #222; position: relative; }
+        /* 儀表板區域 */
+        .dashboard { background: #000; padding: 30px 15px; border-radius: 25px; text-align: center; margin-bottom: 15px; border: 2px solid #333; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .digital { font-family: 'Digital-7 Mono', sans-serif; line-height: 1; }
         
-        /* 數位字體風格 */
-        .digital { font-family: 'Digital-7 Mono', sans-serif; }
-        #countdown { font-size: 5rem; color: var(--accent); text-shadow: 0 0 15px rgba(0, 255, 65, 0.4); margin: 5px 0; }
-        #real-time { font-size: 1.5rem; color: var(--red); text-shadow: 0 0 10px rgba(255, 59, 48, 0.4); }
-        #full-date { font-size: 1rem; color: #888; margin-top: 5px; }
-        
-        /* 選單按鈕 */
-        .menu-btn { position: absolute; top: 20px; right: 20px; background: none; border: none; cursor: pointer; z-index: 10; }
-        .menu-btn div { width: 25px; height: 3px; background: white; margin: 5px 0; }
+        #countdown { font-size: 5.5rem; color: var(--accent); text-shadow: 0 0 15px rgba(0, 255, 65, 0.5); margin: 10px 0; }
+        #real-time { font-size: 1.8rem; color: var(--red); text-shadow: 0 0 10px rgba(255, 59, 48, 0.5); }
+        #full-date { font-size: 1.1rem; color: #888; margin-bottom: 5px; letter-spacing: 2px; }
 
-        /* 表格與行事曆 */
-        .table-card { background: #111; border-radius: 15px; overflow-x: auto; margin-top: 10px; }
-        table { width: 100%; border-collapse: collapse; min-width: 450px; }
+        /* 三條線選單 */
+        .menu-btn { position: absolute; top: 25px; right: 25px; background: none; border: none; cursor: pointer; padding: 5px; }
+        .menu-btn div { width: 28px; height: 3px; background: white; margin: 6px 0; transition: 0.3s; border-radius: 2px; }
+
+        /* 課表顯示 */
+        .table-card { background: var(--panel); border-radius: 15px; overflow-x: auto; border: 1px solid #333; }
+        table { width: 100%; border-collapse: collapse; min-width: 480px; }
         th, td { border: 1px solid #222; padding: 12px 5px; text-align: center; font-size: 14px; }
-        .active-cell { background-color: rgba(0, 255, 65, 0.15) !important; color: var(--accent); font-weight: bold; }
+        th { background: #111; color: #666; font-weight: normal; }
+        .active-cell { background-color: rgba(0, 255, 65, 0.15) !important; color: var(--accent); font-weight: bold; border: 1px solid var(--accent); }
+        .teacher { font-size: 11px; color: #777; display: block; margin-top: 3px; }
+
+        /* 彈窗系統 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; overflow-y: auto; padding-top: 20px; }
+        .modal-body { background: #111; margin: 0 auto 40px; padding: 25px; width: 85%; max-width: 500px; border-radius: 25px; border: 1px solid #333; }
+        input, textarea, select { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: white; border-radius: 10px; margin: 10px 0; box-sizing: border-box; font-size: 16px; }
         
-        /* 彈窗 */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; overflow-y: auto; }
-        .modal-body { background: #1a1a1a; margin: 20px auto; padding: 25px; width: 90%; max-width: 500px; border-radius: 20px; }
-        input, textarea, select { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: white; border-radius: 10px; margin: 10px 0; box-sizing: border-box; }
-        
-        /* 行事曆專用 */
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
-        .calendar-day { padding: 8px 0; border-radius: 5px; font-size: 12px; cursor: pointer; background: #222; }
-        .holiday { color: var(--red); font-weight: bold; }
-        .has-note { border-bottom: 2px solid var(--primary); }
+        /* 行事曆 */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 15px; }
+        .cal-day { padding: 10px 0; background: #222; border-radius: 8px; font-size: 13px; cursor: pointer; text-align: center; }
+        .cal-day.holiday { color: var(--red); font-weight: bold; }
+        .cal-day.note-mark { border-bottom: 3px solid var(--primary); }
+        .cal-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; color: #555; font-size: 12px; margin-bottom: 5px; }
+
+        button { width: 100%; padding: 14px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; margin: 10px 0; font-size: 16px; }
+        .btn-blue { background: var(--primary); color: white; }
+        .btn-green { background: var(--accent); color: black; }
+        .btn-dark { background: #333; color: white; }
     </style>
 </head>
 <body>
 
 <div class="dashboard">
     <button class="menu-btn" onclick="toggleModal('menuModal')"><div></div><div></div><div></div></button>
-    <div id="full-date">2026 / 02 / 27</div>
+    <div id="full-date" class="digital">2026 / 02 / 27</div>
     <div id="countdown" class="digital">00:00:00</div>
     <div id="real-time" class="digital">00:00:00</div>
-    <div style="font-size: 11px; color: #444; margin-top:10px;">台北標準時間 (TPE)</div>
 </div>
 
 <select id="classSelector" onchange="switchClass()"></select>
 
-<div id="holiday-msg" style="display:none; text-align:center; padding:20px; color:var(--accent); font-weight:bold;">✨ 國定假日，放假一天 ✨</div>
+<div id="holiday-banner" style="display:none; text-align:center; padding:40px 20px; color:var(--accent); font-size:1.5rem; font-weight:bold;">
+    🏝️ 國定假日 / 週末休息
+</div>
+
 <div class="table-card" id="tableBox"></div>
 
 <div id="menuModal" class="modal">
     <div class="modal-body">
-        <h3>⚙️ 控制中心</h3>
-        <label>時間微調 (輸入秒數，例如 2 或 -2)：</label>
-        <input type="number" id="offsetInput" placeholder="0" onchange="setOffset(this.value)">
+        <h2 style="color:var(--primary); margin-top:0;">SYSTEM MENU</h2>
         
-        <button onclick="toggleModal('calModal')" style="width:100%; background:var(--primary); color:white; padding:15px; border-radius:10px; border:none; margin:10px 0;">📅 開啟校園行事曆</button>
+        <label>⏱️ 時間偏移微調 (秒):</label>
+        <input type="number" id="offsetInput" step="0.5" value="0" oninput="updateOffset(this.value)">
         
-        <hr style="border-color:#333">
-        <h4>🔍 教師追蹤</h4>
-        <input type="text" id="tQuery" placeholder="輸入老師..." oninput="searchT()">
-        <div id="searchRes" style="font-size:13px; color:var(--accent); min-height:40px;"></div>
+        <button class="btn-blue" onclick="toggleModal('calModal')">📅 開啟校園行事曆</button>
 
-        <hr style="border-color:#333">
-        <h4>🛠️ 資料庫編輯</h4>
-        <textarea id="jsonInput" style="height:100px;"></textarea>
-        <button onclick="importJSON()" style="width:100%; background:var(--accent); color:#000; padding:10px; border:none; font-weight:bold;">儲存資料庫</button>
-        <button onclick="toggleModal('menuModal')" style="width:100%; margin-top:20px; background:#444; border:none; color:white;">關閉</button>
+        <hr style="border-color:#333; margin:20px 0;">
+        
+        <h4>🔍 教師追蹤</h4>
+        <input type="text" id="tSearch" placeholder="搜尋老師名字..." oninput="handleSearch()">
+        <div id="searchInfo" style="background:#000; padding:15px; border-radius:10px; font-size:14px; color:var(--accent); line-height:1.6;"></div>
+
+        <hr style="border-color:#333; margin:20px 0;">
+        
+        <h4>🛠️ 核心資料庫 (JSON)</h4>
+        <textarea id="jsonDB" placeholder="貼上課表 JSON..."></textarea>
+        <button class="btn-green" onclick="saveDB()">儲存並更新系統</button>
+        <button class="btn-dark" onclick="toggleModal('menuModal')">關閉選單</button>
     </div>
 </div>
 
 <div id="calModal" class="modal">
     <div class="modal-body">
-        <h3 id="calTitle">2026 / 02</h3>
-        <div class="calendar-grid" id="calGrid"></div>
-        <hr style="border-color:#333">
-        <div id="noteArea" style="display:none;">
-            <p id="selectedDateText"></p>
-            <textarea id="dayNote" placeholder="輸入當天備註..."></textarea>
-            <button onclick="saveNote()" style="background:var(--primary); color:white; border:none; padding:10px; border-radius:5px;">儲存備註</button>
+        <h3 id="calMonthTitle" style="text-align:center;">2026 / 02</h3>
+        <div class="cal-header"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+        
+        <div id="notePanel" style="display:none; margin-top:20px; background:#000; padding:15px; border-radius:15px;">
+            <div id="selDateDisplay" style="color:var(--primary); font-weight:bold; margin-bottom:10px;"></div>
+            <textarea id="dateNote" style="height:80px;" placeholder="寫下備註..."></textarea>
+            <button class="btn-blue" onclick="saveDateNote()">儲存備註</button>
         </div>
-        <button onclick="toggleModal('calModal')" style="width:100%; margin-top:20px; background:#444; border:none; color:white;">返回</button>
+        
+        <button class="btn-dark" onclick="toggleModal('calModal')">返回</button>
     </div>
 </div>
 
 <script>
-    // 預設資料
-    let fullDB = JSON.parse(localStorage.getItem('full_database')) || { "電一乙": Array.from({length:7},()=>Array(5).fill("未設定")) };
-    let timeOffset = parseInt(localStorage.getItem('time_offset')) || 0;
-    let notes = JSON.parse(localStorage.getItem('day_notes')) || {};
-    let currentClass = localStorage.getItem('current_class') || Object.keys(fullDB)[0];
-    let selectedDate = "";
-
+    // --- 初始資料與配置 ---
     const slots = [
         { s: "08:10", e: "09:00" }, { s: "09:10", e: "10:00" }, { s: "10:10", e: "11:00" },
         { s: "11:10", e: "12:00" }, { s: "13:10", e: "14:00" }, { s: "14:10", e: "15:00" }, { s: "15:20", e: "16:10" }
     ];
 
-    // 國定假日判定 (範例：2026年)
-    const holidays = ["2026-01-01", "2026-02-17", "2026-02-28", "2026-04-04", "2026-05-01", "2026-06-19", "2026-10-10"];
+    // 2026 國定假日清單
+    const holidays2026 = ["2026-01-01", "2026-01-28", "2026-01-29", "2026-01-30", "2026-02-17", "2026-02-28", "2026-04-04", "2026-04-05", "2026-05-01", "2026-06-19", "2026-10-10"];
+
+    let db = JSON.parse(localStorage.getItem('edu_db')) || { "電一乙": Array.from({length:7},()=>Array(5).fill("未設定")) };
+    let offset = parseFloat(localStorage.getItem('edu_offset')) || 0;
+    let notes = JSON.parse(localStorage.getItem('edu_notes')) || {};
+    let curClass = localStorage.getItem('edu_class') || Object.keys(db)[0];
+    let focusedDate = "";
 
     function init() {
-        updateSelector();
+        renderClassList();
         renderTable();
         renderCalendar();
-        setInterval(tick, 1000);
-        document.getElementById('offsetInput').value = timeOffset;
-        document.getElementById('jsonInput').value = JSON.stringify(fullDB, null, 2);
+        document.getElementById('jsonDB').value = JSON.stringify(db, null, 2);
+        document.getElementById('offsetInput').value = offset;
+        setInterval(updateTick, 1000);
     }
 
-    function tick() {
+    // --- 核心計時邏輯 ---
+    function updateTick() {
         const now = new Date();
-        const localNow = new Date(now.getTime() + timeOffset * 1000);
+        const adjusted = new Date(now.getTime() + offset * 1000);
         
-        // 顯示日期與時間
-        document.getElementById('full-date').innerText = localNow.toLocaleDateString('zh-TW', {year:'numeric', month:'2-digit', day:'2-digit'});
-        document.getElementById('real-time').innerText = localNow.toTimeString().split(' ')[0];
+        // 更新 UI 時間
+        document.getElementById('full-date').innerText = adjusted.toLocaleDateString('zh-TW', {year:'numeric', month:'2-digit', day:'2-digit'}).replace(/\//g,' / ');
+        document.getElementById('real-time').innerText = adjusted.toTimeString().split(' ')[0];
         
-        const sec = localNow.getHours() * 3600 + localNow.getMinutes() * 60 + localNow.getSeconds();
-        const day = localNow.getDay();
-        const dateStr = localNow.toISOString().split('T')[0];
+        const secOfDay = adjusted.getHours() * 3600 + adjusted.getMinutes() * 60 + adjusted.getSeconds();
+        const dayOfWeek = adjusted.getDay();
+        const dateKey = adjusted.toISOString().split('T')[0];
 
         // 假日判定
-        const isHoliday = (day === 0 || day === 6 || holidays.includes(dateStr));
-        document.getElementById('holiday-msg').style.display = isHoliday ? "block" : "none";
-        document.getElementById('tableBox').style.display = isHoliday ? "none" : "block";
+        const isOff = (dayOfWeek === 0 || dayOfWeek === 6 || holidays2026.includes(dateKey));
+        document.getElementById('holiday-banner').style.display = isOff ? "block" : "none";
+        document.getElementById('tableBox').style.display = isOff ? "none" : "block";
 
-        // 倒數計時邏輯
-        let curP = -1, cdVal = 0;
-        slots.forEach((o, i) => {
-            const startS = toSec(o.s), endS = toSec(o.e);
-            if (sec >= startS && sec < endS) { curP = i; cdVal = endS - sec; }
-            else if (sec < startS && cdVal === 0) { cdVal = startS - sec; }
+        // 倒數計時計算
+        let currentPeriod = -1, cdSeconds = 0;
+        slots.forEach((slot, i) => {
+            const start = timeToSec(slot.s), end = timeToSec(slot.e);
+            if (secOfDay >= start && secOfDay < end) { currentPeriod = i; cdSeconds = end - secOfDay; }
+            else if (secOfDay < start && cdSeconds === 0) { cdSeconds = start - secOfDay; }
         });
 
-        document.getElementById('countdown').innerText = formatTime(cdVal);
+        document.getElementById('countdown').innerText = formatHMS(cdSeconds);
         
-        // 更新表格亮點
+        // 螢幕表格亮點
         document.querySelectorAll('td').forEach(c => c.classList.remove('active-cell'));
-        if (curP !== -1 && day >= 1 && day <= 5 && !isHoliday) {
-            const rowIdx = curP + (curP >= 4 ? 2 : 1);
-            const targetRow = document.querySelectorAll('tr')[rowIdx];
-            if (targetRow) targetRow.cells[day].classList.add('active-cell');
+        if (currentPeriod !== -1 && dayOfWeek >= 1 && dayOfWeek <= 5 && !isOff) {
+            const rowIdx = currentPeriod + (currentPeriod >= 4 ? 2 : 1);
+            const row = document.querySelectorAll('tr')[rowIdx];
+            if (row) row.cells[dayOfWeek].classList.add('active-cell');
         }
     }
 
-    function formatTime(s) {
+    function formatHMS(s) {
         const h = Math.floor(s / 3600);
         const m = Math.floor((s % 3600) / 60);
         const sec = s % 60;
-        return (h > 0 ? `${h}:` : "") + `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+        let res = h > 0 ? `${h}:` : "";
+        return res + `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
     }
 
-    // 行事曆邏輯
+    // --- 行事曆與備註 ---
     function renderCalendar() {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
-        document.getElementById('calTitle').innerText = `${year} / ${String(month+1).padStart(2,'0')}`;
+        const d = new Date();
+        const y = d.getFullYear(), m = d.getMonth();
+        document.getElementById('calMonthTitle').innerText = `${y} / ${String(m+1).padStart(2,'0')}`;
         
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const firstDay = new Date(y, m, 1).getDay();
+        const totalDays = new Date(y, m + 1, 0).getDate();
         
         let html = "";
         for(let i=0; i<firstDay; i++) html += `<div></div>`;
-        for(let d=1; d<=daysInMonth; d++) {
-            const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            const isH = holidays.includes(dStr);
-            const hasN = notes[dStr] ? "has-note" : "";
-            html += `<div class="calendar-day ${isH?'holiday':''} ${hasN}" onclick="openNote('${dStr}')">${d}</div>`;
+        for(let day=1; day<=totalDays; day++) {
+            const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+            const isH = holidays2026.includes(dateStr);
+            const hasN = notes[dateStr] ? "note-mark" : "";
+            html += `<div class="cal-day ${isH?'holiday':''} ${hasN}" onclick="openNote('${dateStr}')">${day}</div>`;
         }
-        document.getElementById('calGrid').innerHTML = html;
+        document.getElementById('calendarGrid').innerHTML = html;
     }
 
-    function openNote(d) {
-        selectedDate = d;
-        document.getElementById('noteArea').style.display = "block";
-        document.getElementById('selectedDateText').innerText = d;
-        document.getElementById('dayNote').value = notes[d] || "";
+    function openNote(date) {
+        focusedDate = date;
+        document.getElementById('notePanel').style.display = "block";
+        document.getElementById('selDateDisplay').innerText = "日期: " + date;
+        document.getElementById('dateNote').value = notes[date] || "";
     }
 
-    function saveNote() {
-        notes[selectedDate] = document.getElementById('dayNote').value;
-        localStorage.setItem('day_notes', JSON.stringify(notes));
-        alert("備註已儲存");
+    function saveDateNote() {
+        notes[focusedDate] = document.getElementById('dateNote').value;
+        localStorage.setItem('edu_notes', JSON.stringify(notes));
         renderCalendar();
+        alert("備註已更新");
     }
 
-    function setOffset(v) {
-        timeOffset = parseInt(v) || 0;
-        localStorage.setItem('time_offset', timeOffset);
-    }
-
-    function searchT() {
-        const q = document.getElementById('tQuery').value.trim();
-        if(!q) return document.getElementById('searchRes').innerHTML = "";
-        const now = new Date(Date.now() + timeOffset * 1000);
-        const sec = now.getHours()*3600 + now.getMinutes()*60;
-        let curP = -1, nextP = -1;
-        slots.forEach((o, i) => { 
-            if(sec >= toSec(o.s) && sec < toSec(o.e)) curP = i;
-            if(sec < toSec(o.s) && nextP === -1) nextP = i;
-        });
+    // --- 教師搜尋 ---
+    function handleSearch() {
+        const q = document.getElementById('tSearch').value.trim();
+        const res = document.getElementById('searchInfo');
+        if(!q) return res.innerHTML = "";
         
-        let cPos = "不在教室", nPos = "未知";
-        Object.keys(fullDB).forEach(cls => {
-            if(curP!==-1 && fullDB[cls][curP][now.getDay()-1]?.includes(q)) cPos = cls;
-            if(nextP!==-1 && fullDB[cls][nextP][now.getDay()-1]?.includes(q)) nPos = cls;
+        const now = new Date(Date.now() + offset * 1000);
+        const day = now.getDay();
+        const sec = now.getHours() * 3600 + now.getMinutes() * 60;
+        
+        let curP = -1, nxtP = -1;
+        slots.forEach((s, i) => {
+            if(sec >= timeToSec(s.s) && sec < timeToSec(s.e)) curP = i;
+            if(sec < timeToSec(s.s) && nxtP === -1) nxtP = i;
         });
-        document.getElementById('searchRes').innerHTML = `📍 目前：${cPos} | ⏭️ 下一節：${nPos}`;
+
+        let currentLoc = "不在教室", nextLoc = "無課程";
+        Object.keys(db).forEach(cls => {
+            if(curP!==-1 && db[cls][curP][day-1]?.includes(q)) currentLoc = `正在 ${cls}`;
+            if(nxtP!==-1 && db[cls][nxtP][day-1]?.includes(q)) nextLoc = cls;
+        });
+        res.innerHTML = `📍 目前：${currentLoc}<br>⏭️ 下一節：${nextLoc}`;
     }
 
-    // 基本功能
-    function updateSelector() {
-        const sel = document.getElementById('classSelector');
-        sel.innerHTML = Object.keys(fullDB).map(cls => `<option value="${cls}" ${cls === currentClass ? 'selected' : ''}>${cls}</option>`).join('');
+    // --- 系統功能 ---
+    function updateOffset(v) { offset = parseFloat(v) || 0; localStorage.setItem('edu_offset', offset); }
+    function saveDB() {
+        try {
+            db = JSON.parse(document.getElementById('jsonDB').value);
+            localStorage.setItem('full_database', JSON.stringify(db));
+            renderClassList(); renderTable(); alert("資料庫已儲存");
+        } catch(e) { alert("JSON 格式錯誤！"); }
+    }
+    function renderClassList() {
+        document.getElementById('classSelector').innerHTML = Object.keys(db).map(c => `<option value="${c}" ${c===curClass?'selected':''}>${c}</option>`).join('');
     }
     function renderTable() {
-        let data = fullDB[currentClass];
+        const data = db[curClass] || db[Object.keys(db)[0]];
         let h = `<table><tr><th>節</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th></tr>`;
-        data.forEach((row, pIdx) => {
-            if (pIdx === 4) h += `<tr style="background:#111"><td colspan="6">LUNCH</td></tr>`;
-            h += `<tr><td>${pIdx + 1}</td>` + row.map(c => `<td>${c.replace('(','<br><small>').replace(')','</small>')}</td>`).join('') + `</tr>`;
+        data.forEach((row, i) => {
+            if(i===4) h += `<tr style="background:#111;color:#444;font-size:12px;"><td colspan="6">午休 LUNCH BREAK</td></tr>`;
+            h += `<tr><td>${i+1}</td>` + row.map(c => {
+                let [s, t] = c.split('(');
+                return `<td>${s}${t ? `<span class="teacher">(${t}</span>` : ""}</td>`;
+            }).join('') + `</tr>`;
         });
         document.getElementById('tableBox').innerHTML = h + `</table>`;
     }
-    function switchClass() { currentClass = document.getElementById('classSelector').value; localStorage.setItem('current_class', currentClass); renderTable(); }
-    function toSec(t) { const [h, m] = t.split(':'); return h * 3600 + m * 60; }
+    function switchClass() { curClass = document.getElementById('classSelector').value; localStorage.setItem('edu_class', curClass); renderTable(); }
+    function timeToSec(t) { const [h, m] = t.split(':'); return h * 3600 + m * 60; }
     function toggleModal(id) { const m = document.getElementById(id); m.style.display = (m.style.display==='block'?'none':'block'); }
-    function importJSON() { try { fullDB = JSON.parse(document.getElementById('jsonInput').value); localStorage.setItem('full_database', JSON.stringify(fullDB)); updateSelector(); renderTable(); alert("成功"); } catch(e){alert("失敗");} }
-    async function toggleWake(on) { if(on) await navigator.wakeLock.request('screen'); }
     window.onload = init;
 </script>
 </body>
