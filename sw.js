@@ -1,32 +1,48 @@
-// 班級課表資料庫
-const allSchedules = {
-    "電一乙": [
-        ["全民國防(陳怡今)", "國語文(陳美偵)", "積木程式(謝秀宏)", "健康護理(李怡蓉)", "基本電學(楊森評)"],
-        ["音樂(鐘悅綾)", "國語文(陳美偵)", "積木程式(謝秀宏)", "閩南語文(陳怡今)", "基本電學(楊森評)"],
-        ["應用英文(張琬美)", "英語文(張琬美)", "積木程式(謝秀宏)", "生活科技(楊森評)", "物理(龔榮志)"],
-        ["數學(洪坤聰)", "數學(洪坤聰)", "歷史(陳豔顏)", "生活科技(楊森評)", "歷史(陳豔顏)"],
-        ["基電實習(李冠章)", "物理(龔榮志)", "週會/聯課", "國語文(陳美偵)", "英語文(張琬美)"],
-        ["基電實習(李冠章)", "體育(張惠珍)", "週會/聯課", "藝術生活(董怡芳)", "數學(洪坤聰)"],
-        ["基電實習(李冠章)", "基本電學(楊森評)", "班會(洪坤聰)", "數學(洪坤聰)", "體育(張惠珍)"]
-    ],
-    "範例班級": [
-        ["科目A(老師1)", "科目B(老師2)", "科目C(老師3)", "科目D(老師4)", "科目E(老師5)"],
-        ["科目A(老師1)", "科目B(老師2)", "科目C(老師3)", "科目D(老師4)", "科目E(老師5)"],
-        ["科目A(老師1)", "科目B(老師2)", "科目C(老師3)", "科目D(老師4)", "科目E(老師5)"],
-        ["科目A(老師1)", "科目B(老師2)", "科目C(老師3)", "科目D(老師4)", "科目E(老師5)"],
-        ["科目A(老師1)", "科目B(老師2)", "科目C(老師3)", "科目D(老師4)", "科目E(老師5)"],
-        ["科目A(老師1)", "科目B(老師2)", "科目C(老師3)", "科目D(老師4)", "科目E(老師5)"],
-        ["科目A(老師1)", "科目B(老師2)", "科目C(老師3)", "科目D(老師4)", "科目E(老師5)"]
-    ]
-};
-
-// 學校節次時間定義 (24小時制)
-const timeSlots = [
-    { name: "第一節", start: "08:10", end: "09:00" },
-    { name: "第二節", start: "09:10", end: "10:00" },
-    { name: "第三節", start: "10:10", end: "11:00" },
-    { name: "第四節", start: "11:10", end: "12:00" },
-    { name: "第五節", start: "13:10", end: "14:00" },
-    { name: "第六節", start: "14:10", end: "15:00" },
-    { name: "第七節", start: "15:20", end: "16:10" }
+// 每次修改 data.js 後，請把此版本號加 1 (例如 v1.1 -> v1.2)
+const CACHE_NAME = 'timetable-v1.2';
+const ASSETS_TO_CACHE = [
+  './',
+  './index.html',
+  './data.js',
+  './manifest.json'
 ];
+
+// 1. 安裝階段：強制跳過等待 (Skip Waiting)
+// 確保新版 Service Worker 一下載完就立刻接管網頁
+self.addEventListener('install', (event) => {
+  self.skipWaiting(); 
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('新版資源已寫入快取');
+      return cache.addAll(ASSETS_TO_CACHE);
+    })
+  );
+});
+
+// 2. 激活階段：清理所有舊版本的快取
+// 這一步能解決你看到的「舊版畫面（國安局）」問題
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cache) => {
+          if (cache !== CACHE_NAME) {
+            console.log('正在清理舊快取:', cache);
+            return caches.delete(cache);
+          }
+        })
+      );
+    }).then(() => self.clients.claim()) // 立即控制所有頁面
+  );
+});
+
+// 3. 策略：網絡優先 (Network First)
+// 這是針對「動態課表」最合適的策略
+// 有網路時抓最新的 data.js，沒網路時（在教室）才用快取的課表
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    fetch(event.request).catch(() => {
+      return caches.match(event.request);
+    })
+  );
+});
