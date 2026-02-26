@@ -3,78 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全功能 雲端課表系統</title>
+    <title>全功能 數位課表系統</title>
+    <link href="https://fonts.cdnfonts.com/css/digital-7-mono" rel="stylesheet">
     <style>
-        :root { --primary: #2196F3; --accent: #FFEB3B; --bg: #f5f7fa; --dark: #2c3e50; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #333; }
+        :root { --primary: #2196F3; --accent: #00ff41; --bg: #0a0a0a; --card: #1a1a1a; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #eee; }
         
         /* 儀表板 */
-        .dashboard { background: var(--dark); color: white; padding: 20px 15px; border-radius: 20px; text-align: center; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: relative; }
-        #countdown { font-size: 3.5rem; font-weight: bold; color: var(--accent); margin: 5px 0; font-family: monospace; }
-        #status-text { font-size: 1.1rem; opacity: 0.9; }
+        .dashboard { background: #000; color: white; padding: 25px 15px; border-radius: 20px; text-align: center; margin-bottom: 15px; border: 2px solid #333; position: relative; }
         
-        /* 介面按鈕與選單 */
-        .menu-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: white; }
-        select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; margin-bottom: 15px; font-size: 16px; background: white; }
+        /* 7 段顯示器風格 */
+        #countdown { 
+            font-family: 'Digital-7 Mono', sans-serif; 
+            font-size: 5rem; 
+            color: var(--accent); 
+            text-shadow: 0 0 20px rgba(0, 255, 65, 0.5);
+            margin: 10px 0;
+            line-height: 1;
+        }
+        
+        #status-text { font-size: 1.1rem; color: #aaa; letter-spacing: 1px; }
+
+        /* 三條線選單按鈕 */
+        .menu-btn { 
+            position: absolute; top: 20px; right: 20px; background: none; border: none; 
+            cursor: pointer; padding: 5px; z-index: 10;
+        }
+        .menu-btn div { width: 30px; height: 3px; background-color: white; margin: 6px 0; transition: 0.4s; }
 
         /* 表格樣式 */
-        .table-card { background: white; border-radius: 15px; overflow-x: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .table-card { background: var(--card); border-radius: 15px; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; min-width: 450px; }
-        th, td { border: 1px solid #eee; padding: 10px 5px; text-align: center; font-size: 14px; }
-        th { background: #34495e; color: white; }
-        .active-cell { background-color: var(--accent) !important; font-weight: bold; color: #000; }
-        .teacher { font-size: 11px; color: #888; display: block; }
+        th, td { border: 1px solid #333; padding: 12px 5px; text-align: center; font-size: 14px; }
+        th { background: #222; color: #888; }
+        .active-cell { background-color: rgba(0, 255, 65, 0.2) !important; color: var(--accent); font-weight: bold; }
         
-        /* 彈窗 */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; overflow-y: auto; }
-        .modal-body { background: white; margin: 20px auto; padding: 20px; width: 90%; max-width: 500px; border-radius: 20px; color: #333; }
-        textarea { width: 100%; height: 200px; font-family: monospace; font-size: 12px; padding: 10px; box-sizing: border-box; border-radius: 10px; border: 1px solid #ccc; }
+        /* 彈窗與輸入 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; overflow-y: auto; }
+        .modal-body { background: #222; margin: 20px auto; padding: 25px; width: 90%; max-width: 500px; border-radius: 20px; border: 1px solid #444; }
+        textarea { width: 100%; height: 150px; background: #000; color: #0f0; border: 1px solid #444; padding: 10px; font-family: monospace; }
+        input[type="text"] { width: 100%; padding: 12px; background: #333; border: none; color: white; border-radius: 8px; margin: 10px 0; box-sizing: border-box;}
         
-        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-        button { flex: 1; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
-        .btn-main { background: var(--primary); color: white; }
-        .btn-save { background: #4caf50; color: white; }
-        .btn-close { background: #eee; color: #333; width: 100%; margin-top: 10px; }
+        button { padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; margin: 5px 0; }
+        .btn-save { background: var(--primary); color: white; width: 100%; }
+        .btn-close { background: #444; color: white; width: 100%; }
     </style>
 </head>
 <body>
 
 <div class="dashboard">
-    <button class="menu-btn" onclick="toggleModal('menuModal')">⚙️</button>
-    <div id="status-text">載入中...</div>
-    <div id="countdown">00:00</div>
-    <div style="font-size: 12px; color: #95a5a6;">校對: <span id="offLab">0</span>s</div>
+    <button class="menu-btn" onclick="toggleModal('menuModal')">
+        <div></div><div></div><div></div>
+    </button>
+    <div id="status-text">SYSTEM READY</div>
+    <div id="countdown">00:00:00</div>
+    <div style="font-size: 11px; color: #555;">OFFSET: <span id="offLab">0</span>s</div>
 </div>
 
-<select id="classSelector" onchange="switchClass()"></select>
+<select id="classSelector" onchange="switchClass()" style="width:100%; padding:12px; background:#1a1a1a; color:white; border:1px solid #333; border-radius:10px; margin-bottom:15px;"></select>
 
 <div class="table-card" id="tableBox"></div>
 
 <div id="menuModal" class="modal">
     <div class="modal-body">
-        <h3>⚙️ 系統設定</h3>
-        <label><input type="checkbox" id="wakeLockCheck" onchange="toggleWake(this.checked)"> 螢幕長亮模式</label>
+        <h3 style="color:var(--primary)">MENU</h3>
+        <label><input type="checkbox" id="wakeLockCheck" onchange="toggleWake(this.checked)"> Keep Screen On</label>
         
-        <hr>
-        <h4>🔍 教師追蹤 (全校掃描)</h4>
-        <input type="text" id="tQuery" placeholder="輸入老師姓名..." oninput="searchT()" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; box-sizing:border-box;">
-        <div id="searchRes" style="color:var(--primary); font-weight:bold; margin-top:10px; min-height:20px;"></div>
+        <hr style="border-color:#333">
+        <h4>🔍 老師動態追蹤</h4>
+        <input type="text" id="tQuery" placeholder="輸入老師姓名 (例如：陳怡今)..." oninput="searchT()">
+        <div id="searchRes" style="background:#000; padding:15px; border-radius:10px; min-height:50px; font-size:14px; line-height:1.6;"></div>
 
-        <hr>
-        <h4>🛠️ DataJS 資料庫編輯 (JSON)</h4>
-        <p style="font-size: 12px; color: #666;">請在此貼上完整的課表 JSON 代碼：</p>
+        <hr style="border-color:#333">
+        <h4>🛠️ DataJS 核心編輯</h4>
         <textarea id="jsonInput"></textarea>
-        <div class="btn-group">
-            <button class="btn-save" onclick="importJSON()">💾 儲存並套用資料庫</button>
-            <button class="btn-main" onclick="exportJSON()">導出目前備份</button>
-        </div>
-
+        <button class="btn-save" onclick="importJSON()">儲存並執行代碼</button>
         <button class="btn-close" onclick="toggleModal('menuModal')">關閉</button>
     </div>
 </div>
 
 <script>
-    // 預設範例資料 (當本地沒資料時顯示)
     const defaultDB = {
         "電一乙": [
             ["全民國防(陳怡今)", "國語文(陳美偵)", "積木程式(謝秀宏)", "健康護理(李怡蓉)", "基本電學(楊森評)"],
@@ -105,26 +113,15 @@
         document.getElementById('jsonInput').value = JSON.stringify(fullDB, null, 2);
     }
 
-    // 更新下拉選單
-    function updateSelector() {
-        const sel = document.getElementById('classSelector');
-        sel.innerHTML = Object.keys(fullDB).map(cls => `<option value="${cls}" ${cls === currentClass ? 'selected' : ''}>${cls}</option>`).join('');
-    }
-
-    function renderTable() {
-        if(!fullDB[currentClass]) currentClass = Object.keys(fullDB)[0];
-        let data = fullDB[currentClass];
-        let h = `<table><tr><th>節</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th></tr>`;
-        data.forEach((row, pIdx) => {
-            if (pIdx === 4) h += `<tr style="background:#f9f9f9;font-size:12px;color:#999"><td colspan="6">午休 12:00 - 13:10</td></tr>`;
-            h += `<tr><td>${pIdx + 1}</td>`;
-            row.forEach((cell) => {
-                let [sub, tea] = cell.split('(');
-                h += `<td>${sub}${tea ? `<span class="teacher">(${tea}</span>` : ""}</td>`;
-            });
-            h += `</tr>`;
-        });
-        document.getElementById('tableBox').innerHTML = h + `</table>`;
+    // 格式化時間：自動進位小時
+    function formatTime(seconds) {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        if (h > 0) {
+            return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 
     function tick() {
@@ -133,19 +130,19 @@
         const day = now.getDay();
         document.getElementById('offLab').innerText = timeOffset;
 
-        let curP = -1, cd = "--:--", st = "放學/休息中";
+        let curP = -1, cdVal = 0, st = "IDLE / 放學";
         slots.forEach((o, i) => {
             const startS = toSec(o.s), endS = toSec(o.e);
             if (sec >= startS && sec < endS) {
-                curP = i; st = `正在上：第 ${i + 1} 節`;
-                let r = endS - sec; cd = `${Math.floor(r / 60)}:${String(r % 60).padStart(2, '0')}`;
-            } else if (sec < startS && cd === "--:--") {
-                let w = startS - sec; st = `距離下一節`;
-                cd = `${Math.floor(w / 60)}:${String(w % 60).padStart(2, '0')}`;
+                curP = i; st = `PERIOD ${i + 1} ACTIVE`;
+                cdVal = endS - sec;
+            } else if (sec < startS && cdVal === 0) {
+                st = `NEXT PERIOD STARTING`;
+                cdVal = startS - sec;
             }
         });
 
-        document.getElementById('countdown').innerText = cd;
+        document.getElementById('countdown').innerText = formatTime(cdVal);
         document.getElementById('status-text').innerText = st;
 
         document.querySelectorAll('td').forEach(c => c.classList.remove('active-cell'));
@@ -156,30 +153,11 @@
         }
     }
 
-    // JSON 儲存與執行
-    function importJSON() {
-        try {
-            const input = document.getElementById('jsonInput').value;
-            const newDB = JSON.parse(input);
-            fullDB = newDB;
-            localStorage.setItem('full_database', JSON.stringify(fullDB));
-            updateSelector();
-            switchClass();
-            alert("✅ 資料庫更新成功！");
-        } catch (e) {
-            alert("❌ JSON 格式錯誤，請檢查符號是否正確。");
-        }
-    }
-
-    function exportJSON() {
-        document.getElementById('jsonInput').value = JSON.stringify(fullDB, null, 2);
-        alert("已將目前的資料庫導出至文字框。");
-    }
-
-    // 找老師 (全資料庫搜尋)
+    // 搜尋教師邏輯 (包含下一節位置)
     function searchT() {
         const q = document.getElementById('tQuery').value.trim();
-        if (!q) return document.getElementById('searchRes').innerText = "";
+        const resBox = document.getElementById('searchRes');
+        if (!q) { resBox.innerHTML = ""; return; }
         
         const now = new Date(Date.now() + timeOffset * 1000);
         const day = now.getDay();
@@ -188,29 +166,64 @@
         let curP = -1;
         slots.forEach((o, i) => { if(sec >= toSec(o.s) && sec < toSec(o.e)) curP = i; });
 
-        if (day < 1 || day > 5) return document.getElementById('searchRes').innerText = "週末放假中";
+        let currentPos = "休息中", nextPos = "無課程";
 
-        let results = [];
         Object.keys(fullDB).forEach(cls => {
-            if(curP !== -1 && fullDB[cls][curP][day-1].includes(q)) {
-                results.push(`📍 目前在：${cls}`);
+            if (day >= 1 && day <= 5) {
+                // 當前位置
+                if (curP !== -1 && fullDB[cls][curP][day-1].includes(q)) currentPos = `📍 正在 <b>${cls}</b> 上課`;
+                // 下一節位置
+                if (curP < 6 && fullDB[cls][curP+1][day-1].includes(q)) nextPos = `<b>${cls}</b>`;
             }
         });
 
-        document.getElementById('searchRes').innerText = results.length > 0 ? results.join(' | ') : "🔍 此時段未找到該位老師";
+        resBox.innerHTML = `
+            <div style="color:var(--accent)">${q} 老師</div>
+            <div style="margin-top:5px;">${currentPos}</div>
+            <div style="font-size:12px; color:#888;">⏭️ 下一節位置：${nextPos}</div>
+        `;
     }
 
-    // 功能
+    function updateSelector() {
+        const sel = document.getElementById('classSelector');
+        sel.innerHTML = Object.keys(fullDB).map(cls => `<option value="${cls}" ${cls === currentClass ? 'selected' : ''}>${cls}</option>`).join('');
+    }
+
+    function renderTable() {
+        if(!fullDB[currentClass]) currentClass = Object.keys(fullDB)[0];
+        let data = fullDB[currentClass];
+        let h = `<table><tr><th>節</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th></tr>`;
+        data.forEach((row, pIdx) => {
+            if (pIdx === 4) h += `<tr style="background:#111; font-size:12px; color:#444"><td colspan="6">LUNCH BREAK</td></tr>`;
+            h += `<tr><td>${pIdx + 1}</td>`;
+            row.forEach((cell) => {
+                let [sub, tea] = cell.split('(');
+                h += `<td>${sub}${tea ? `<span class="teacher">(${tea}</span>` : ""}</td>`;
+            });
+            h += `</tr>`;
+        });
+        document.getElementById('tableBox').innerHTML = h + `</table>`;
+    }
+
+    function importJSON() {
+        try {
+            const newDB = JSON.parse(document.getElementById('jsonInput').value);
+            fullDB = newDB;
+            localStorage.setItem('full_database', JSON.stringify(fullDB));
+            updateSelector();
+            switchClass();
+            alert("SUCCESS: 資料庫已同步");
+        } catch (e) { alert("ERROR: JSON 語法錯誤"); }
+    }
+
     function switchClass() {
         currentClass = document.getElementById('classSelector').value;
         localStorage.setItem('current_class', currentClass);
         renderTable();
     }
     function toSec(t) { const [h, m] = t.split(':'); return h * 3600 + m * 60; }
-    function adjTime(v) { timeOffset += v; localStorage.setItem('time_offset', timeOffset); }
     function toggleModal(id) { document.getElementById(id).style.display = (document.getElementById(id).style.display==='block'?'none':'block'); }
     async function toggleWake(on) { if(on) wakeLock = await navigator.wakeLock.request('screen'); else if(wakeLock) wakeLock.release(); }
-
     window.onload = init;
 </script>
 </body>
