@@ -1,5 +1,5 @@
 // 每次你修改 data.js 或 index.html 後，請把 v1 改成 v2, v3...
-const CACHE_NAME = 'school-timetable-v5';
+const CACHE_NAME = 'school-timetable-v99';
 
 const ASSETS_TO_CACHE = [
   './',
