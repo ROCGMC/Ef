@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課表系統</title>
+    <title>學藝股長專業課表系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .is-now { border: 3px solid #3b82f6; animation: pulse 2s infinite; }
@@ -34,7 +34,7 @@
                     <span id="current-location" class="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-bold hidden">地點</span>
                 </div>
             </div>
-            
+
             <div class="border-t border-slate-100 pt-4">
                 <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Next 下一節</p>
                 <h2 id="next-lesson" class="text-lg font-bold text-slate-700">--</h2>
@@ -101,10 +101,23 @@
         }
 
         function handleTimers(now) {
+            const day = now.getDay();
             const currentTime = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
             const timerEl = document.getElementById('countdown-timer');
             const labelEl = document.getElementById('status-label');
             let found = false;
+
+            // 獲取今天最後一節有課的索引
+            let lastClassSlot = 0;
+            if (day >= 1 && day <= 5) {
+                for (let i = timeSlots.length - 1; i >= 0; i--) {
+                    let lesson = baseSchedule[`${day}-${timeSlots[i].id}`];
+                    if (lesson && lesson.name && lesson.name.trim() !== "") {
+                        lastClassSlot = parseTime(timeSlots[i].end);
+                        break;
+                    }
+                }
+            }
 
             // 1. 上課中 (紅色)
             for (let slot of timeSlots) {
@@ -120,7 +133,7 @@
                 }
             }
 
-            // 2. 打掃時間 (12:00 - 12:30) (黃色/琥珀色)
+            // 2. 打掃時間 (12:00 - 12:30) (黃色)
             const cleanStart = 12 * 3600;
             const cleanEnd = 12 * 3600 + 30 * 60;
             if (!found && currentTime >= cleanStart && currentTime < cleanEnd) {
@@ -143,13 +156,13 @@
                 found = true;
             }
 
-            // 4. 下課休息中 (綠色，前3分變紅)
-            if (!found) {
+            // 4. 下課休息中 (綠色) 僅在還有下一節課且未放學前
+            if (!found && currentTime < lastClassSlot) {
                 for (let slot of timeSlots) {
                     const start = parseTime(slot.start);
                     if (currentTime < start) {
                         const remain = start - currentTime;
-                        const isPreClass = remain <= 180;
+                        const isPreClass = remain <= 60; // 改為 1 分鐘預警
                         labelEl.innerText = isPreClass ? "⚠️ 準備上課 - 倒計時" : "下課休息中 - 距離上課";
                         timerEl.innerText = formatDuration(remain);
                         timerEl.className = `text-4xl font-black font-mono my-1 ${isPreClass ? 'text-red-500 blink' : 'text-green-500'}`;
@@ -159,10 +172,15 @@
                 }
             }
 
-            if (!found) { labelEl.innerText = "放學時間"; timerEl.innerText = "--:--"; timerEl.className = "text-4xl font-black font-mono my-1 text-slate-300"; }
+            // 5. 放學或沒課 (黑色)
+            if (!found) { 
+                labelEl.innerText = "放學時間"; 
+                labelEl.className = "text-xs font-black uppercase text-slate-400";
+                timerEl.innerText = "--:--"; 
+                timerEl.className = "text-4xl font-black font-mono my-1 text-slate-800"; 
+            }
         }
 
-        // 其他輔助函數維持不變...
         function parseTime(str) { const [h, m] = str.split(':').map(Number); return h * 3600 + m * 60; }
         function formatDuration(sec) { return `${Math.floor(sec / 60).toString().padStart(2, '0')}:${(sec % 60).toString().padStart(2, '0')}`; }
 
@@ -176,7 +194,7 @@
                 if (reschedules[todayStr] && reschedules[todayStr][slot.id]) lesson = reschedules[todayStr][slot.id];
                 const isNow = currentTimeStr >= slot.start && currentTimeStr < slot.end;
                 if (isNow) currentLesson = lesson;
-                if (currentTimeStr < slot.start && !nextLesson && lesson.name) nextLesson = lesson;
+                if (currentTimeStr < slot.start && !nextLesson && lesson.name && lesson.name.trim() !== "") nextLesson = lesson;
                 listHTML += `<div class="p-4 rounded-2xl bg-white shadow-sm flex items-center gap-4 ${isNow ? 'is-now' : ''}">
                     <div class="text-center min-w-[60px]"><div class="text-xs text-slate-400">${slot.start}</div><div class="font-bold text-slate-700">第 ${slot.id} 節</div></div>
                     <div class="flex-1"><div class="font-bold text-slate-800">${lesson.name || '空堂'}</div><div class="flex gap-2 items-center"><div class="text-sm text-slate-400">${lesson.teacher || '--'}</div>${lesson.loc ? `<div class="text-[10px] bg-slate-100 text-slate-500 px-1.5 rounded border border-slate-200">${lesson.loc}</div>` : ''}</div></div>
@@ -190,6 +208,7 @@
             document.getElementById('next-lesson').innerText = nextLesson?.name || "無下節課";
         }
 
+        // --- 彈窗與儲存邏輯 (保持原有邏輯) ---
         function openSetup() { let currentDay = new Date().getDay(); if (currentDay === 0 || currentDay === 6) currentDay = 1; document.getElementById('edit-day-select').value = currentDay; renderSetupInputs(currentDay); openModal('setupModal'); }
         function renderSetupInputs(day) {
             let html = '';
@@ -216,6 +235,7 @@
             reschedules[todayStr][slotId] = { name: document.getElementById('resched-name').value, teacher: document.getElementById('resched-teacher').value, loc: document.getElementById('resched-loc').value };
             localStorage.setItem('reschedules', JSON.stringify(reschedules)); closeModal('rescheduleModal');
         }
+
         setInterval(updateClock, 1000); updateClock();
     </script>
 </body>
