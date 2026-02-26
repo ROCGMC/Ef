@@ -179,13 +179,13 @@
             } else if (totalSec < startS && nextIdx === -1) {
                 nextIdx = i;
                 const wait = startS - totalSec;
-                document.getElementById('status').innerText = `☕ 下課休息中`;
-                document.getElementById('nextHint').innerText = `距離 ${slot.name} 還有 ${Math.floor(wait/60)}分${wait%60}秒`;
+                document.getElementById('status').innerText = `下課時間`;
+                document.getElementById('nextHint').innerText = `距離下節課 ${slot.name} 還有 ${Math.floor(wait/60)}分${wait%60}秒`;
             }
         });
 
         if (currentIdx === -1 && nextIdx === -1) {
-            document.getElementById('status').innerText = "🏠 放學囉 / 尚未上課";
+            document.getElementById('status').innerText = "放學";
             document.getElementById('nextHint').innerText = "";
         }
 
