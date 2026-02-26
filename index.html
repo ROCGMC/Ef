@@ -3,98 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全校課表查詢 PWA</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#4a90e2">
+    <title>校準版課表 PWA</title>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
-        .header { text-align: center; margin-bottom: 20px; }
-        select { padding: 10px; font-size: 16px; border-radius: 5px; width: 100%; max-width: 300px; }
-        .schedule-container { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        th, td { border: 1px solid #ddd; padding: 12px 8px; text-align: center; font-size: 14px; min-width: 60px; }
-        th { background-color: #4a90e2; color: white; }
-        .current-day { background-color: #fff9c4 !important; font-weight: bold; }
-        .time { font-size: 10px; color: #666; display: block; }
-        .break-row { background:#eee; font-size: 12px; }
+        body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
+        .dashboard { background: #333; color: #fff; padding: 15px; border-radius: 10px; margin-bottom: 15px; text-align: center; }
+        #timer { font-size: 24px; color: #ffeb3b; font-weight: bold; margin: 5px 0; }
+        .calibration { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+        .cal-btn { background: #555; border: none; color: white; padding: 5px 10px; border-radius: 5px; font-size: 12px; cursor: pointer; }
+        
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        .active-row { background-color: #fff9c4; border: 2px solid #fbc02d; box-shadow: inset 0 0 10px rgba(251,192,45,0.3); }
+        .next-hint { font-size: 12px; color: #bbb; }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <h2>校園課表 PWA</h2>
-    <select id="classSelect" onchange="renderSchedule()">
-        <option value="電一乙">電一乙</option>
-        <option value="電一甲">電一甲 (範例)</option>
-        </select>
+<div class="dashboard">
+    <div id="status">讀取中...</div>
+    <div id="timer">00:00:00</div>
+    <div class="next-hint" id="nextHint"></div>
+    
+    <div class="calibration">
+        <button class="cal-btn" onclick="adjustOffset(-10)">-10s</button>
+        <button class="cal-btn" onclick="adjustOffset(-1)">-1s</button>
+        <span id="offsetDisplay" style="font-size: 12px; align-self: center;">校對: 0s</span>
+        <button class="cal-btn" onclick="adjustOffset(1)">+1s</button>
+        <button class="cal-btn" onclick="adjustOffset(10)">+10s</button>
+    </div>
 </div>
 
-<div class="schedule-container" id="scheduleOutput">
-    </div>
+<div id="tableContainer"></div>
 
+<script src="data.js"></script>
 <script>
-    // 這裡存放所有班級的課表資料
-    const schedules = {
-        "電一乙": [
-            ["全民國防", "國語文", "積木程式", "健康護理", "基本電學"],
-            ["音樂", "國語文", "積木程式", "閩南語文", "基本電學"],
-            ["應用英文", "英語文", "積木程式", "生活科技", "物理"],
-            ["數學", "數學", "歷史", "生活科技", "歷史"],
-            ["基本電學實習", "物理", "週會/聯課", "國語文", "英語文"],
-            ["基本電學實習", "體育", "週會/聯課", "藝術生活", "數學"],
-            ["基本電學實習", "基本電學", "班會", "數學", "體育"]
-        ],
-        "電一甲": [
-            ["國語文", "數學", "體育", "基本電學", "英文"],
-            ["國語文", "數學", "體育", "基本電學", "英文"],
-            ["物理", "國語文", "電子實習", "歷史", "週會"],
-            ["物理", "國語文", "電子實習", "歷史", "週會"],
-            ["...", "...", "...", "...", "..."],
-            ["...", "...", "...", "...", "..."],
-            ["...", "...", "...", "...", "..."]
-        ]
-    };
+    // 1. 課表與時間定義
+    const timeSlots = [
+        { name: "第一節", start: "08:10", end: "09:00" },
+        { name: "第二節", start: "09:10", end: "10:00" },
+        { name: "第三節", start: "10:10", end: "11:00" },
+        { name: "第四節", start: "11:10", end: "12:00" },
+        { name: "第五節", start: "13:10", end: "14:00" },
+        { name: "第六節", start: "14:10", end: "15:00" },
+        { name: "第七節", start: "15:20", end: "16:10" }
+    ];
 
-    const timeSlots = ["08:10", "09:10", "10:10", "11:10", "13:10", "14:10", "15:20"];
+    // 2. 校對邏輯
+    let timeOffset = parseInt(localStorage.getItem('timeOffset')) || 0;
 
-    function renderSchedule() {
-        const className = document.getElementById('classSelect').value;
-        localStorage.setItem('selectedClass', className); // 儲存選擇
-        const data = schedules[className];
-        const day = new Date().getDay();
+    function adjustOffset(seconds) {
+        timeOffset += seconds;
+        localStorage.setItem('timeOffset', timeOffset);
+        document.getElementById('offsetDisplay').innerText = `校對: ${timeOffset}s`;
+    }
 
-        let html = `<table><thead><tr><th>節</th>${['一','二','三','四','五'].map((d, i) => `<th class="${day === i+1 ? 'current-day' : ''}">${d}</th>`).join('')}</tr></thead><tbody>`;
+    function getSchoolTime() {
+        const now = new Date();
+        return new Date(now.getTime() + timeOffset * 1000);
+    }
 
-        data.forEach((row, index) => {
-            // 加入午休行
-            if (index === 4) {
-                html += `<tr class="break-row"><td colspan="6">午休 (12:00 - 13:10)</td></tr>`;
+    // 3. 核心計時器與動態更新
+    function updateApp() {
+        const schoolTime = getSchoolTime();
+        const h = schoolTime.getHours();
+        const m = schoolTime.getMinutes();
+        const s = schoolTime.getSeconds();
+        const totalSeconds = h * 3600 + m * 60 + s;
+        const day = schoolTime.getDay(); // 1-5
+
+        // 更新時鐘顯示
+        document.getElementById('timer').innerText = 
+            `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+        let currentPeriodIdx = -1;
+        let nextPeriodIdx = -1;
+
+        timeSlots.forEach((slot, i) => {
+            const [sH, sM] = slot.start.split(':').map(Number);
+            const [eH, eM] = slot.end.split(':').map(Number);
+            const startSec = sH * 3600 + sM * 60;
+            const endSec = eH * 3600 + eM * 60;
+
+            if (totalSeconds >= startSec && totalSeconds < endSec) {
+                currentPeriodIdx = i;
+                const remain = endSec - totalSeconds;
+                document.getElementById('status').innerText = `🔔 ${slot.name} 進行中`;
+                document.getElementById('nextHint').innerText = `距離下課還有 ${Math.floor(remain/60)}分${remain%60}秒`;
+            } else if (totalSeconds < startSec && nextPeriodIdx === -1) {
+                nextPeriodIdx = i;
+                const wait = startSec - totalSeconds;
+                document.getElementById('status').innerText = `☕ 下課休息中`;
+                document.getElementById('nextHint').innerText = `距離 ${slot.name} 還有 ${Math.floor(wait/60)}分${wait%60}秒`;
             }
-            
-            html += `<tr><td>${index + 1}<span class="time">${timeSlots[index]}</span></td>`;
-            row.forEach((cell, cellIndex) => {
-                const isToday = (day === cellIndex + 1);
-                html += `<td class="${isToday ? 'current-day' : ''}">${cell}</td>`;
-            });
-            html += `</tr>`;
         });
 
-        html += `</tbody></table>`;
-        document.getElementById('scheduleOutput').innerHTML = html;
-    }
-
-    // 初始化：讀取上次選擇或預設值
-    window.onload = () => {
-        const savedClass = localStorage.getItem('selectedClass');
-        if (savedClass && schedules[savedClass]) {
-            document.getElementById('classSelect').value = savedClass;
+        // 如果放學了
+        if (currentPeriodIdx === -1 && nextPeriodIdx === -1) {
+            document.getElementById('status').innerText = "🏠 放學囉 / 尚未上課";
+            document.getElementById('nextHint').innerText = "";
         }
-        renderSchedule();
-    };
 
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js');
+        // 高亮表格 (僅在每分鐘更新一次或初始載入)
+        refreshTableHighlight(currentPeriodIdx, day);
     }
+
+    function refreshTableHighlight(periodIdx, day) {
+        document.querySelectorAll('tr').forEach(r => r.classList.remove('active-row'));
+        if (periodIdx !== -1 && day >= 1 && day <= 5) {
+            const rows = document.querySelectorAll('#timetable tbody tr:not(.break-row)');
+            if(rows[periodIdx]) rows[periodIdx].classList.add('active-row');
+        }
+    }
+
+    // 啟動
+    document.getElementById('offsetDisplay').innerText = `校對: ${timeOffset}s`;
+    setInterval(updateApp, 1000); // 每一秒跑一次，確保倒數流暢
+    
+    // (這裡接續之前的表格生成渲染代碼 renderTable...)
 </script>
 </body>
 </html>
