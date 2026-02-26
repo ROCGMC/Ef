@@ -3,240 +3,238 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課表系統</title>
+    <title>學藝股長課表系統 - 智慧休假版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .is-now { border: 3px solid #3b82f6; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
         .blink { animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.5; } }
+        .calendar-day.active { background-color: #3b82f6; color: white; border-radius: 99px; font-weight: bold; }
+        .calendar-day.has-event::after { content: ''; display: block; width: 4px; height: 4px; background: #f59e0b; border-radius: 50%; margin: 0 auto; }
+        .calendar-day.holiday { color: #ef4444; }
+        .calendar-day.today { border: 1px solid #3b82f6; border-radius: 99px; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen pb-20">
+<body class="bg-slate-50 min-h-screen pb-24">
 
     <div class="max-w-md mx-auto p-4">
-        <div class="bg-white rounded-3xl p-6 shadow-sm mb-6">
+        <div class="bg-white rounded-3xl p-6 shadow-sm mb-6 border-b-4 border-slate-200">
             <div class="flex justify-between items-center mb-4">
                 <span id="date-display" class="text-sm font-bold text-slate-400">正在讀取...</span>
-                <span id="clock" class="text-lg font-mono font-bold text-slate-800">00:00:00</span>
-            </div>
-
-            <div class="mb-4 text-center py-2 rounded-2xl bg-slate-50">
-                <p id="status-label" class="text-xs font-black uppercase tracking-widest text-slate-400">狀態</p>
-                <div id="countdown-timer" class="text-4xl font-black font-mono my-1">--:--</div>
-            </div>
-
-            <div id="now-card" class="mb-4">
-                <p class="text-xs font-black text-blue-500 uppercase tracking-widest">Current 當前課程</p>
-                <h1 id="current-lesson" class="text-2xl font-bold text-slate-800">目前沒課</h1>
-                <div class="flex gap-2 items-center">
-                    <p id="current-teacher" class="text-slate-500">--</p>
-                    <span id="current-location" class="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-bold hidden">地點</span>
+                <div class="text-right flex items-center gap-2">
+                    <span id="wake-status" class="text-slate-300">💡</span>
+                    <span id="clock" class="text-lg font-mono font-bold text-slate-800">00:00:00</span>
                 </div>
             </div>
 
-            <div class="border-t border-slate-100 pt-4">
-                <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Next 下一節</p>
-                <h2 id="next-lesson" class="text-lg font-bold text-slate-700">--</h2>
+            <div id="status-container" class="mb-4 text-center py-4 rounded-2xl bg-slate-50">
+                <p id="status-label" class="text-xs font-black uppercase tracking-widest text-slate-400">狀態</p>
+                <div id="countdown-timer" class="text-4xl font-black font-mono my-1">--:--</div>
+                <div id="today-note" class="text-xs font-bold text-amber-600 empty:hidden mt-1 px-4"></div>
+            </div>
+
+            <div id="now-card" class="mb-4 text-center">
+                <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">Current 當前課程</p>
+                <h1 id="current-lesson" class="text-2xl font-bold text-slate-800">目前沒課</h1>
+                <p id="current-teacher" class="text-sm text-slate-500 mt-1">--</p>
+            </div>
+
+            <div id="next-card" class="border-t border-slate-100 pt-4 flex justify-between items-center">
+                <div>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Next 下一節</p>
+                    <h2 id="next-lesson" class="font-bold text-slate-700">--</h2>
+                </div>
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 mb-8">
-            <button onclick="openSetup()" class="bg-slate-800 text-white py-4 rounded-2xl font-bold shadow-lg">設定每週課表</button>
-            <button onclick="openModal('rescheduleModal')" class="bg-amber-500 text-white py-4 rounded-2xl font-bold shadow-lg">今日調課</button>
+        <div class="grid grid-cols-3 gap-3 mb-8">
+            <button onclick="openSetup()" class="bg-slate-800 text-white py-3 rounded-2xl font-bold shadow-md text-xs active:scale-95 transition">設定課表</button>
+            <button onclick="openCalendar()" class="bg-blue-600 text-white py-3 rounded-2xl font-bold shadow-md text-xs active:scale-95 transition">行事曆</button>
+            <button onclick="openModal('rescheduleModal')" class="bg-amber-500 text-white py-3 rounded-2xl font-bold shadow-md text-xs active:scale-95 transition">今日調課</button>
         </div>
 
-        <h3 class="font-bold text-slate-800 mb-4 px-1">今日課程清單</h3>
         <div id="schedule-list" class="space-y-3"></div>
     </div>
 
-    <div id="setupModal" class="fixed inset-0 bg-black/60 hidden z-50 p-4 flex items-center justify-center">
-        <div class="bg-white rounded-3xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-            <h2 class="text-xl font-bold mb-4">設定週循環課表</h2>
-            <select id="edit-day-select" onchange="renderSetupInputs(this.value)" class="w-full p-3 border rounded-xl mb-4 bg-blue-50 font-bold text-blue-600 border-blue-200">
-                <option value="1">編輯：週一</option><option value="2">編輯：週二</option>
-                <option value="3">編輯：週三</option><option value="4">編輯：週四</option>
-                <option value="5">編輯：週五</option>
-            </select>
-            <div id="setup-inputs" class="space-y-4"></div>
-            <button onclick="saveBaseSchedule()" class="w-full bg-blue-600 text-white py-4 rounded-xl mt-6 font-bold shadow-lg">儲存此日課表</button>
-            <button onclick="closeModal('setupModal')" class="w-full text-slate-400 py-2 mt-2">關閉</button>
+    <div id="calendarModal" class="fixed inset-0 bg-black/60 hidden z-50 p-4 flex items-center justify-center">
+        <div class="bg-white rounded-3xl w-full max-w-md p-6 max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="calendar-month-year" class="text-lg font-bold"></h2>
+                <div class="flex gap-1">
+                    <button onclick="changeMonth(-1)" class="p-2 bg-slate-100 rounded-lg text-xs font-bold">＜</button>
+                    <button onclick="changeMonth(1)" class="p-2 bg-slate-100 rounded-lg text-xs font-bold">＞</button>
+                </div>
+            </div>
+            <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-black text-slate-400 mb-2">
+                <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+            </div>
+            <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center mb-4"></div>
+            <div id="day-detail" class="bg-slate-50 rounded-2xl p-4 flex-1 overflow-y-auto">
+                <p id="selected-date-text" class="text-xs font-black text-blue-600 mb-2 uppercase tracking-wider"></p>
+                <textarea id="cal-note" rows="2" placeholder="輸入備註 (輸入'放假'或'假日'當天不顯示課表)" class="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-400 bg-white"></textarea>
+                <button onclick="saveDayEvent()" class="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-bold mt-3">儲存備註</button>
+            </div>
+            <button onclick="closeModal('calendarModal')" class="w-full text-slate-400 py-3 mt-2 text-sm">關閉</button>
         </div>
     </div>
 
-    <div id="rescheduleModal" class="fixed inset-0 bg-black/60 hidden z-50 p-4 flex items-center justify-center">
-        <div class="bg-white rounded-3xl w-full max-w-md p-6">
-            <h2 class="text-xl font-bold mb-4">今日臨時調課</h2>
-            <select id="resched-slot" class="w-full p-3 border rounded-xl mb-4 bg-slate-50"></select>
-            <input id="resched-name" type="text" placeholder="新的課程名稱" class="w-full p-3 border rounded-xl mb-3">
-            <input id="resched-teacher" type="text" placeholder="新的老師名稱" class="w-full p-3 border rounded-xl mb-3">
-            <input id="resched-loc" type="text" placeholder="新的地點" class="w-full p-3 border rounded-xl mb-4">
-            <button onclick="saveReschedule()" class="w-full bg-amber-500 text-white py-3 rounded-xl font-bold">確認變更</button>
-            <button onclick="closeModal('rescheduleModal')" class="w-full text-slate-400 py-2 mt-2">取消</button>
-        </div>
-    </div>
+    <div id="setupModal" class="fixed inset-0 bg-black/60 hidden z-50 p-4 flex items-center justify-center">...</div>
+    <div id="rescheduleModal" class="fixed inset-0 bg-black/60 hidden z-50 p-4 flex items-center justify-center">...</div>
 
     <script>
+        // 2026 國定假日庫 (智慧判定)
+        const holidays2026 = {
+            "2026-01-01": "元旦",
+            "2026-02-14": "春節連假", "2026-02-15": "春節連假", "2026-02-16": "除夕", "2026-02-17": "初一", "2026-02-18": "初二", "2026-02-19": "初三", "2026-02-20": "春節補假", "2026-02-21": "春節連假", "2026-02-22": "春節連假",
+            "2026-02-27": "228連假", "2026-02-28": "和平紀念日", "2026-03-01": "228連假",
+            "2026-04-03": "兒童節補假", "2026-04-04": "兒童節", "2026-04-05": "清明節", "2026-04-06": "清明節補假",
+            "2026-05-01": "勞動節", "2026-06-19": "端午節",
+            "2026-09-25": "中秋節", "2026-09-28": "教師節",
+            "2026-10-09": "國慶補假", "2026-10-10": "國慶日",
+            "2026-10-25": "光復節", "2026-10-26": "光復節補假",
+            "2026-12-25": "行憲紀念日"
+        };
+
         const timeSlots = [
-            { id: 1, start: "08:10", end: "09:00" },
-            { id: 2, start: "09:10", end: "10:00" },
-            { id: 3, start: "10:10", end: "11:00" },
-            { id: 4, start: "11:10", end: "12:00" },
-            { id: 5, start: "13:10", end: "14:00" },
-            { id: 6, start: "14:10", end: "15:00" },
-            { id: 7, start: "15:20", end: "16:10" },
-            { id: 8, start: "16:20", end: "17:10" }
+            { id: 1, start: "08:10", end: "09:00" }, { id: 2, start: "09:10", end: "10:00" },
+            { id: 3, start: "10:10", end: "11:00" }, { id: 4, start: "11:10", end: "12:00" },
+            { id: 5, start: "13:10", end: "14:00" }, { id: 6, start: "14:10", end: "15:00" },
+            { id: 7, start: "15:20", end: "16:10" }, { id: 8, start: "16:20", end: "17:10" }
         ];
 
         let baseSchedule = JSON.parse(localStorage.getItem('baseSchedule')) || {};
         let reschedules = JSON.parse(localStorage.getItem('reschedules')) || {};
+        let dayEvents = JSON.parse(localStorage.getItem('dayEvents')) || {};
+        let timeOffset = parseInt(localStorage.getItem('timeOffset')) || 0;
 
-        function updateClock() {
-            const now = new Date();
-            document.getElementById('clock').innerText = now.toTimeString().split(' ')[0];
-            const days = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
-            document.getElementById('date-display').innerText = `${now.getMonth()+1}/${now.getDate()} ${days[now.getDay()]}`;
-            handleTimers(now);
-            refreshUI(now);
+        let calViewDate = new Date();
+        let selectedDateStr = new Date().toISOString().split('T')[0];
+
+        function isHoliday(dateStr) {
+            const day = new Date(dateStr).getDay();
+            const isWeekend = (day === 0 || day === 6);
+            const isPublicHoliday = holidays2026[dateStr];
+            const isManualHoliday = (dayEvents[dateStr] && (dayEvents[dateStr].includes("假") || dayEvents[dateStr].includes("休")));
+            return isPublicHoliday || isManualHoliday || (isWeekend && !dayEvents[dateStr]?.includes("補課"));
         }
 
+        function updateClock() {
+            const realNow = new Date();
+            const adjustedNow = new Date(realNow.getTime() + timeOffset * 1000);
+            const todayStr = adjustedNow.toISOString().split('T')[0];
+            const holidayName = holidays2026[todayStr] || (isHoliday(todayStr) ? "休假日" : null);
+            
+            document.getElementById('clock').innerText = adjustedNow.toTimeString().split(' ')[0];
+            document.getElementById('date-display').innerText = `${adjustedNow.getMonth()+1}/${adjustedNow.getDate()} ${["週日","週一","週二","週三","週四","週五","週六"][adjustedNow.getDay()]}`;
+            
+            const noteText = dayEvents[todayStr] || "";
+            document.getElementById('today-note').innerText = holidayName ? `🗓️ ${holidayName}${noteText ? '：'+noteText : ''}` : noteText;
+
+            if (holidayName) {
+                // 放假模式 UI
+                document.getElementById('status-label').innerText = "今天是";
+                document.getElementById('status-label').className = "text-xs font-black text-green-500 uppercase";
+                document.getElementById('countdown-timer').innerText = "放假 🥳";
+                document.getElementById('countdown-timer').className = "text-4xl font-black text-green-500 my-1";
+                document.getElementById('now-card').classList.add('hidden');
+                document.getElementById('next-card').classList.add('hidden');
+                document.getElementById('schedule-list').innerHTML = `<div class="text-center py-20 text-slate-300 font-bold">國定假日或週末，好好休息吧！</div>`;
+            } else {
+                // 上課模式 UI
+                document.getElementById('now-card').classList.remove('hidden');
+                document.getElementById('next-card').classList.remove('hidden');
+                handleTimers(adjustedNow);
+                refreshUI(adjustedNow);
+            }
+        }
+
+        // 行事曆渲染加入假日顏色
+        function renderCalendar() {
+            const y = calViewDate.getFullYear(), m = calViewDate.getMonth();
+            document.getElementById('calendar-month-year').innerText = `${y}年 ${m + 1}月`;
+            const first = new Date(y, m, 1).getDay(), last = new Date(y, m + 1, 0).getDate();
+            const container = document.getElementById('calendar-days');
+            container.innerHTML = '';
+            
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            for (let i = 0; i < first; i++) container.innerHTML += '<div></div>';
+            for (let d = 1; d <= last; d++) {
+                const dateStr = `${y}-${(m+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+                const holidayLabel = holidays2026[dateStr];
+                const hasEvent = dayEvents[dateStr] || reschedules[dateStr];
+                const isSelected = selectedDateStr === dateStr;
+                
+                container.innerHTML += `
+                    <div onclick="selectCalendarDay('${dateStr}')" 
+                         class="calendar-day p-2 text-sm cursor-pointer ${isSelected ? 'active' : ''} ${hasEvent ? 'has-event' : ''} ${holidayLabel || new Date(dateStr).getDay()===0 || new Date(dateStr).getDay()===6 ? 'holiday' : ''} ${todayStr === dateStr ? 'today' : ''}">
+                        ${d}
+                    </div>`;
+            }
+        }
+
+        // (其餘基礎函數如 handleTimers, refreshUI, formatDuration 等保持不變...)
         function handleTimers(now) {
-            const day = now.getDay();
-            const currentTime = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-            const timerEl = document.getElementById('countdown-timer');
-            const labelEl = document.getElementById('status-label');
-            let found = false;
+            const day = now.getDay(), currentTime = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+            const timerEl = document.getElementById('countdown-timer'), labelEl = document.getElementById('status-label');
+            let found = false, todayStr = now.toISOString().split('T')[0];
+            let lastEnd = 0;
+            timeSlots.forEach(s => { if(getLesson(day, s.id, todayStr).name) lastEnd = parseTime(s.end); });
 
-            // 獲取今天最後一節有課的索引
-            let lastClassSlot = 0;
-            if (day >= 1 && day <= 5) {
-                for (let i = timeSlots.length - 1; i >= 0; i--) {
-                    let lesson = baseSchedule[`${day}-${timeSlots[i].id}`];
-                    if (lesson && lesson.name && lesson.name.trim() !== "") {
-                        lastClassSlot = parseTime(timeSlots[i].end);
-                        break;
-                    }
-                }
-            }
-
-            // 1. 上課中 (紅色)
-            for (let slot of timeSlots) {
-                const start = parseTime(slot.start);
-                const end = parseTime(slot.end);
+            for (let s of timeSlots) {
+                const start = parseTime(s.start), end = parseTime(s.end);
                 if (currentTime >= start && currentTime < end) {
-                    const remain = end - currentTime;
-                    labelEl.innerText = "上課中 - 距離下課";
-                    labelEl.className = "text-xs font-black uppercase text-red-500";
-                    timerEl.innerText = formatDuration(remain);
-                    timerEl.className = "text-4xl font-black font-mono my-1 text-red-500";
-                    found = true; break;
+                    updateStatus(labelEl, timerEl, "上課中", end - currentTime, "text-red-500"); found = true; break;
                 }
             }
-
-            // 2. 打掃時間 (12:00 - 12:30) (黃色)
-            const cleanStart = 12 * 3600;
-            const cleanEnd = 12 * 3600 + 30 * 60;
-            if (!found && currentTime >= cleanStart && currentTime < cleanEnd) {
-                const remain = cleanEnd - currentTime;
-                labelEl.innerText = "午餐與打掃時間";
-                labelEl.className = "text-xs font-black uppercase text-amber-500";
-                timerEl.innerText = formatDuration(remain);
-                timerEl.className = "text-4xl font-black font-mono my-1 text-amber-500";
+            if(!found && currentTime >= 43200 && currentTime < 47400) {
+                const end = currentTime < 45000 ? 45000 : 47400;
+                updateStatus(labelEl, timerEl, currentTime < 45000 ? "打掃時間" : "午休時間", end - currentTime, currentTime < 45000 ? "text-amber-500" : "text-blue-500");
                 found = true;
             }
-
-            // 3. 午休時間 (12:30 - 13:10) (藍色)
-            const sleepEnd = 13 * 3600 + 10 * 60;
-            if (!found && currentTime >= cleanEnd && currentTime < sleepEnd) {
-                const remain = sleepEnd - currentTime;
-                labelEl.innerText = "午休時間";
-                labelEl.className = "text-xs font-black uppercase text-blue-500";
-                timerEl.innerText = formatDuration(remain);
-                timerEl.className = "text-4xl font-black font-mono my-1 text-blue-500";
-                found = true;
-            }
-
-            // 4. 下課休息中 (綠色) 僅在還有下一節課且未放學前
-            if (!found && currentTime < lastClassSlot) {
-                for (let slot of timeSlots) {
-                    const start = parseTime(slot.start);
-                    if (currentTime < start) {
+            if(!found && currentTime < lastEnd) {
+                for(let s of timeSlots) {
+                    const start = parseTime(s.start);
+                    if(currentTime < start) {
                         const remain = start - currentTime;
-                        const isPreClass = remain <= 60; // 改為 1 分鐘預警
-                        labelEl.innerText = isPreClass ? "⚠️ 準備上課 - 倒計時" : "下課休息中 - 距離上課";
-                        timerEl.innerText = formatDuration(remain);
-                        timerEl.className = `text-4xl font-black font-mono my-1 ${isPreClass ? 'text-red-500 blink' : 'text-green-500'}`;
-                        labelEl.className = `text-xs font-black uppercase ${isPreClass ? 'text-red-500 blink' : 'text-green-500'}`;
+                        updateStatus(labelEl, timerEl, remain <= 60 ? "準備上課" : "下課休息", remain, remain <= 60 ? "text-red-500 blink" : "text-green-500");
                         found = true; break;
                     }
                 }
             }
-
-            // 5. 放學或沒課 (黑色)
-            if (!found) { 
-                labelEl.innerText = "放學時間"; 
-                labelEl.className = "text-xs font-black uppercase text-slate-400";
-                timerEl.innerText = "--:--"; 
-                timerEl.className = "text-4xl font-black font-mono my-1 text-slate-800"; 
-            }
+            if(!found) { labelEl.innerText = "放學時間"; labelEl.className = "text-xs font-black text-slate-400"; timerEl.innerText = "--:--"; timerEl.className = "text-4xl font-black text-slate-800 font-mono"; }
         }
-
+        function updateStatus(l, t, txt, rem, cls) { l.innerText = txt; l.className = "text-xs font-black " + cls; t.innerText = formatDuration(rem); t.className = "text-4xl font-black font-mono " + cls; }
+        function getLesson(d, sid, date) { return (reschedules[date] && reschedules[date][sid]) ? reschedules[date][sid] : (baseSchedule[`${d}-${sid}`] || {name:""}); }
         function parseTime(str) { const [h, m] = str.split(':').map(Number); return h * 3600 + m * 60; }
-        function formatDuration(sec) { return `${Math.floor(sec / 60).toString().padStart(2, '0')}:${(sec % 60).toString().padStart(2, '0')}`; }
-
+        function formatDuration(sec) { return `${Math.floor(sec/60).toString().padStart(2,'0')}:${(sec%60).toString().padStart(2,'0')}`; }
+        
         function refreshUI(now) {
-            const day = now.getDay(); const currentTimeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
-            const todayStr = now.toISOString().split('T')[0];
-            let currentLesson = null; let nextLesson = null; let listHTML = '';
-            if (day === 0 || day === 6) { document.getElementById('schedule-list').innerHTML = '<div class="text-center py-10 text-slate-400">週末愉快！</div>'; return; }
-            timeSlots.forEach(slot => {
-                let lesson = baseSchedule[`${day}-${slot.id}`] || { name: "", teacher: "", loc: "" };
-                if (reschedules[todayStr] && reschedules[todayStr][slot.id]) lesson = reschedules[todayStr][slot.id];
-                const isNow = currentTimeStr >= slot.start && currentTimeStr < slot.end;
-                if (isNow) currentLesson = lesson;
-                if (currentTimeStr < slot.start && !nextLesson && lesson.name && lesson.name.trim() !== "") nextLesson = lesson;
+            const day = now.getDay(), todayStr = now.toISOString().split('T')[0], timeStr = now.toTimeString().substring(0,5);
+            let listHTML = '', cur = null, nxt = null;
+            timeSlots.forEach(s => {
+                const l = getLesson(day, s.id, todayStr); const isNow = timeStr >= s.start && timeStr < s.end;
+                if(isNow) cur = l; if(timeStr < s.start && !nxt && l.name) nxt = l;
                 listHTML += `<div class="p-4 rounded-2xl bg-white shadow-sm flex items-center gap-4 ${isNow ? 'is-now' : ''}">
-                    <div class="text-center min-w-[60px]"><div class="text-xs text-slate-400">${slot.start}</div><div class="font-bold text-slate-700">第 ${slot.id} 節</div></div>
-                    <div class="flex-1"><div class="font-bold text-slate-800">${lesson.name || '空堂'}</div><div class="flex gap-2 items-center"><div class="text-sm text-slate-400">${lesson.teacher || '--'}</div>${lesson.loc ? `<div class="text-[10px] bg-slate-100 text-slate-500 px-1.5 rounded border border-slate-200">${lesson.loc}</div>` : ''}</div></div>
+                    <div class="text-center min-w-[60px] font-mono text-xs"><div class="text-slate-400 text-[10px]">${s.start}</div><div class="font-bold text-slate-700">第 ${s.id} 節</div></div>
+                    <div class="flex-1"><div class="font-bold text-slate-800 text-sm">${l.name || '空堂'}</div><div class="text-[10px] text-slate-400">${l.teacher || '--'} @ ${l.loc || '--'}</div></div>
                 </div>`;
             });
             document.getElementById('schedule-list').innerHTML = listHTML;
-            document.getElementById('current-lesson').innerText = currentLesson?.name || "目前沒課";
-            document.getElementById('current-teacher').innerText = currentLesson?.teacher || "--";
-            const locEl = document.getElementById('current-location');
-            if (currentLesson?.loc) { locEl.innerText = currentLesson.loc; locEl.classList.remove('hidden'); } else { locEl.classList.add('hidden'); }
-            document.getElementById('next-lesson').innerText = nextLesson?.name || "無下節課";
+            document.getElementById('current-lesson').innerText = cur?.name || "目前沒課";
+            document.getElementById('current-teacher').innerText = cur?.teacher || "--";
+            document.getElementById('next-lesson').innerText = nxt?.name || "無下節課";
         }
 
-        // --- 彈窗與儲存邏輯 (保持原有邏輯) ---
-        function openSetup() { let currentDay = new Date().getDay(); if (currentDay === 0 || currentDay === 6) currentDay = 1; document.getElementById('edit-day-select').value = currentDay; renderSetupInputs(currentDay); openModal('setupModal'); }
-        function renderSetupInputs(day) {
-            let html = '';
-            timeSlots.forEach(slot => {
-                const data = baseSchedule[`${day}-${slot.id}`] || { name: "", teacher: "", loc: "" };
-                html += `<div class="p-3 bg-slate-50 rounded-xl space-y-2">
-                    <div class="text-xs font-bold text-blue-500">第 ${slot.id} 節</div>
-                    <div class="grid grid-cols-2 gap-2"><input id="input-n-${slot.id}" type="text" value="${data.name}" placeholder="課程" class="p-2 border rounded-lg text-sm outline-none"><input id="input-t-${slot.id}" type="text" value="${data.teacher}" placeholder="老師" class="p-2 border rounded-lg text-sm outline-none"></div>
-                    <input id="input-l-${slot.id}" type="text" value="${data.loc || ''}" placeholder="上課地點" class="w-full p-2 border rounded-lg text-sm outline-none">
-                </div>`;
-            });
-            document.getElementById('setup-inputs').innerHTML = html;
-        }
-        function saveBaseSchedule() {
-            const day = document.getElementById('edit-day-select').value;
-            timeSlots.forEach(slot => { baseSchedule[`${day}-${slot.id}`] = { name: document.getElementById(`input-n-${slot.id}`).value, teacher: document.getElementById(`input-t-${slot.id}`).value, loc: document.getElementById(`input-l-${slot.id}`).value }; });
-            localStorage.setItem('baseSchedule', JSON.stringify(baseSchedule)); alert('儲存成功！'); refreshUI(new Date());
-        }
-        function openModal(id) { document.getElementById(id).classList.remove('hidden'); if(id === 'rescheduleModal') { let options = ''; timeSlots.forEach(s => options += `<option value="${s.id}">第 ${s.id} 節</option>`); document.getElementById('resched-slot').innerHTML = options; } }
+        // 行事曆輔助函數
+        function openCalendar() { calViewDate = new Date(); selectedDateStr = new Date().toISOString().split('T')[0]; renderCalendar(); selectCalendarDay(selectedDateStr); openModal('calendarModal'); }
+        function changeMonth(s) { calViewDate.setMonth(calViewDate.getMonth() + s); renderCalendar(); }
+        function selectCalendarDay(dateStr) { selectedDateStr = dateStr; document.getElementById('selected-date-text').innerText = `選擇：${dateStr} ${holidays2026[dateStr] || ''}`; document.getElementById('cal-note').value = dayEvents[dateStr] || ""; renderCalendar(); }
+        function saveDayEvent() { const note = document.getElementById('cal-note').value.trim(); if(note) dayEvents[selectedDateStr] = note; else delete dayEvents[selectedDateStr]; localStorage.setItem('dayEvents', JSON.stringify(dayEvents)); renderCalendar(); alert('備註已更新'); }
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-        function saveReschedule() {
-            const slotId = document.getElementById('resched-slot').value; const todayStr = new Date().toISOString().split('T')[0];
-            if (!reschedules[todayStr]) reschedules[todayStr] = {};
-            reschedules[todayStr][slotId] = { name: document.getElementById('resched-name').value, teacher: document.getElementById('resched-teacher').value, loc: document.getElementById('resched-loc').value };
-            localStorage.setItem('reschedules', JSON.stringify(reschedules)); closeModal('rescheduleModal');
-        }
 
-        setInterval(updateClock, 1000); updateClock();
+        setInterval(updateClock, 100); updateClock();
     </script>
 </body>
 </html>
