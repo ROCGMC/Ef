@@ -1,35 +1,46 @@
-const CACHE_NAME = 'timetable-v1';
-const ASSETS = [
-  'index.html',
-  'manifest.json',
-  // 如果你有放圖示或 CSS 檔案，也要加在這裡
+// 每次你修改 data.js 或 index.html 後，請把 v1 改成 v2, v3...
+const CACHE_NAME = 'school-timetable-v1';
+
+const ASSETS_TO_CACHE = [
+  './',
+  './index.html',
+  './data.js',
+  './manifest.json',
+  // 如果你有放小圖示 icon.png，也請加在這裡
 ];
 
-// 安裝階段：快取資源
+// 1. 安裝：將檔案存入手機快取
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('正在預載入課表資源...');
-      return cache.addAll(ASSETS);
+      console.log('課表資源已快取');
+      return cache.addAll(ASSETS_TO_CACHE);
     })
   );
+  self.skipWaiting(); // 強制跳過等待，立即啟用新版
 });
 
-// 激活階段：清理舊快取
+// 2. 激活：刪除舊版本的快取，釋放空間
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            console.log('清理舊版快取:', key);
+            return caches.delete(key);
+          }
+        })
       );
     })
   );
 });
 
-// 攔截請求：優先使用快取
+// 3. 攔截請求：沒網路時也能讀取課表
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((response) => {
+      // 優先使用快取，如果快取沒有則連網抓取
       return response || fetch(event.request);
     })
   );
