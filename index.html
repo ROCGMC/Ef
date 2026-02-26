@@ -3,25 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>數位課表</title>
+    <title>學藝股長終端 - 完整功能旗艦版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .is-now { border: 3px solid #3b82f6; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
-        
-        /* 鎖定時禁止滑動，但保持背景清晰 */
         body.locked { overflow: hidden; touch-action: none; }
-        
-        /* 透明鎖定層，移除霧化效果 */
-        .lock-overlay { 
-            position: fixed; 
-            inset: 0; 
-            z-index: 80; 
-            background: rgba(0,0,0,0); /* 完全透明 */
-            pointer-events: auto; 
-        }
-
-        .calendar-day.active { background-color: #3b82f6; color: white; border-radius: 99px; }
+        .lock-overlay { position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,0); pointer-events: auto; }
+        .calendar-day.active { background-color: #3b82f6; color: white; border-radius: 99px; font-weight: bold; }
+        .calendar-day.has-event::after { content: ''; display: block; width: 4px; height: 4px; background: #f59e0b; border-radius: 50%; margin: 0 auto; }
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #e2e8f0; transition: .4s; border-radius: 24px; }
@@ -48,7 +38,7 @@
 
     <div class="max-w-md mx-auto p-4">
         <div class="bg-slate-900 rounded-[2.5rem] p-8 shadow-2xl mb-6 text-center text-white border-b-8 border-slate-800">
-            <p id="status-label" class="text-[10px] font-black text-blue-400 tracking-[0.3em] mb-2 uppercase">System Clear Lock</p>
+            <p id="status-label" class="text-[10px] font-black text-blue-400 tracking-[0.3em] mb-2 uppercase">System Running</p>
             <h1 id="top-lesson-name" class="text-3xl font-black mb-1 truncate">--</h1>
             <p id="top-lesson-detail" class="text-xs text-slate-400 font-bold mb-4">--</p>
             <div id="countdown-timer" class="text-6xl font-black font-mono tracking-tighter mb-4">--:--</div>
@@ -56,17 +46,17 @@
         </div>
 
         <div class="grid grid-cols-2 gap-4 mb-6">
-            <button onclick="openCalendar()" class="bg-white p-5 rounded-3xl font-bold text-slate-700 shadow-sm border-b-4 border-slate-200">📅 行事曆</button>
-            <button onclick="openReschedule()" class="bg-white p-5 rounded-3xl font-bold text-slate-700 shadow-sm border-b-4 border-slate-200">⚡ 今日調課</button>
+            <button onclick="openCalendar()" class="bg-white p-5 rounded-3xl font-bold text-slate-700 shadow-sm border-b-4 border-slate-200 active:translate-y-1 transition-all">📅 行事曆</button>
+            <button onclick="openReschedule()" class="bg-white p-5 rounded-3xl font-bold text-slate-700 shadow-sm border-b-4 border-slate-200 active:translate-y-1 transition-all">⚡ 今日調課</button>
         </div>
 
-        <div id="schedule-list" class="space-y-3 pb-20"></div>
+        <div id="schedule-list" class="space-y-3 pb-24"></div>
     </div>
 
     <div id="authModal" class="fixed inset-0 bg-slate-900/90 hidden z-[200] flex items-center justify-center p-6">
         <div class="bg-white rounded-[2.5rem] w-full max-w-sm p-8 text-center shadow-2xl">
-            <h2 class="text-xl font-black mb-4">解除鎖定</h2>
-            <input id="unlock-pw" type="password" placeholder="輸入密碼" class="w-full p-4 bg-slate-100 rounded-2xl text-center font-bold mb-6 outline-none border-2 border-transparent focus:border-blue-500">
+            <h2 class="text-xl font-black mb-4">解除安全鎖</h2>
+            <input id="unlock-pw" type="password" placeholder="請輸入解鎖密碼" class="w-full p-4 bg-slate-100 rounded-2xl text-center font-bold mb-6 outline-none border-2 border-transparent focus:border-blue-500">
             <div class="grid grid-cols-2 gap-2">
                 <button onclick="closeModal('authModal')" class="bg-slate-100 py-4 rounded-2xl font-bold">取消</button>
                 <button onclick="confirmUnlock()" class="bg-slate-900 text-white py-4 rounded-2xl font-black">解鎖</button>
@@ -86,8 +76,8 @@
                 <button onclick="toggleMenu(false); openTeacherSearch()" class="w-full text-left p-4 bg-slate-50 rounded-2xl font-bold border-l-4 border-emerald-500">🔍 老師課程搜尋</button>
                 <button onclick="toggleMenu(false); openTeacherDB()" class="w-full text-left p-4 bg-slate-50 rounded-2xl font-bold border-l-4 border-amber-500">👤 教師檔案管理</button>
                 <div class="p-4 bg-slate-50 rounded-2xl">
-                    <p class="text-[10px] font-black text-slate-400 mb-2 uppercase">變更密碼</p>
-                    <input id="set-new-pw" type="password" class="w-full p-2 text-sm border rounded-lg mb-2">
+                    <p class="text-[10px] font-black text-slate-400 mb-2 uppercase">變更解鎖密碼</p>
+                    <input id="set-new-pw" type="password" class="w-full p-2 text-sm border rounded-lg mb-2 outline-none">
                     <button onclick="saveNewPassword()" class="w-full bg-slate-800 text-white py-2 rounded-lg text-[10px] font-bold">更新</button>
                 </div>
             </div>
@@ -95,90 +85,131 @@
         </div>
     </div>
 
+    <div id="teacherSearchModal" class="fixed inset-0 bg-black/60 hidden z-[110] p-4 flex items-center justify-center">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-md p-6 max-h-[85vh] flex flex-col shadow-2xl">
+            <h2 class="text-xl font-black mb-4">🔍 老師課程檢索</h2>
+            <input id="search-teacher-name" type="text" oninput="runTeacherSearch()" placeholder="輸入老師名稱..." class="w-full p-4 bg-slate-100 rounded-2xl mb-4 font-bold outline-none border-2 border-transparent focus:border-blue-500">
+            <div id="search-results" class="flex-1 overflow-y-auto space-y-2 pr-2"></div>
+            <button onclick="closeModal('teacherSearchModal')" class="mt-4 py-3 text-slate-400 font-bold">返回</button>
+        </div>
+    </div>
+
+    <div id="teacherDBModal" class="fixed inset-0 bg-black/60 hidden z-[110] p-4 flex items-center justify-center">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-md p-6 max-h-[90vh] flex flex-col">
+            <h2 class="text-xl font-black mb-4">👤 教師檔案庫</h2>
+            <select id="db-teacher-select" onchange="loadTeacherProfile(this.value)" class="w-full p-4 bg-slate-50 rounded-2xl mb-4 font-bold outline-none"></select>
+            <div class="space-y-3 overflow-y-auto flex-1 pr-1">
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="text-[10px] font-bold text-slate-400 ml-1">血型</label><input id="pro-blood" class="w-full p-3 bg-slate-100 rounded-xl text-sm outline-none"></div>
+                    <div><label class="text-[10px] font-bold text-slate-400 ml-1">星座</label><input id="pro-sign" class="w-full p-3 bg-slate-100 rounded-xl text-sm outline-none"></div>
+                </div>
+                <div><label class="text-[10px] font-bold text-slate-400 ml-1">生日</label><input id="pro-birth" type="date" class="w-full p-3 bg-slate-100 rounded-xl text-sm outline-none"></div>
+                <div><label class="text-[10px] font-bold text-slate-400 ml-1">個人備註</label><textarea id="pro-note" rows="3" class="w-full p-3 bg-slate-100 rounded-xl text-sm outline-none"></textarea></div>
+            </div>
+            <button onclick="saveTeacherProfile()" class="w-full bg-blue-600 text-white py-4 rounded-2xl mt-4 font-bold shadow-lg">儲存檔案</button>
+            <button onclick="closeModal('teacherDBModal')" class="py-2 text-slate-400 text-xs font-bold mt-2 tracking-widest uppercase">Close</button>
+        </div>
+    </div>
+
+    <div id="calendarModal" class="fixed inset-0 bg-black/60 hidden z-[110] p-4 flex items-center justify-center">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-md p-6 max-h-[90vh] flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center mb-4 px-2">
+                <h2 id="calendar-month-year" class="font-black text-lg"></h2>
+                <div class="flex gap-2">
+                    <button onclick="changeMonth(-1)" class="p-2 bg-slate-100 rounded-xl">＜</button>
+                    <button onclick="changeMonth(1)" class="p-2 bg-slate-100 rounded-xl">＞</button>
+                </div>
+            </div>
+            <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-center mb-4"></div>
+            <div class="bg-slate-50 p-5 rounded-3xl flex-1 overflow-y-auto">
+                <p id="selected-date-label" class="text-[10px] font-black text-blue-500 mb-2 uppercase"></p>
+                <textarea id="cal-note-input" rows="2" class="w-full p-3 border rounded-xl text-sm mb-3 outline-none" placeholder="當日重要記事..."></textarea>
+                <button onclick="saveDayEvent()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold">儲存記事</button>
+            </div>
+            <button onclick="closeModal('calendarModal')" class="py-4 text-slate-400 font-bold">返回首頁</button>
+        </div>
+    </div>
+
+    <div id="setupModal" class="fixed inset-0 bg-black/60 hidden z-[110] p-4 flex items-center justify-center">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-md p-6 max-h-[90vh] flex flex-col">
+            <h2 class="text-xl font-black mb-4 px-2">📖 週課表編輯</h2>
+            <select id="setup-day-select" onchange="renderSetupRows(this.value)" class="w-full p-4 bg-blue-50 rounded-2xl mb-4 font-bold text-blue-600 outline-none"></select>
+            <div id="setup-rows" class="flex-1 overflow-y-auto space-y-3 pr-1"></div>
+            <button onclick="saveWeekSchedule()" class="bg-blue-600 text-white py-4 rounded-2xl mt-4 font-bold shadow-lg">儲存並應用</button>
+            <button onclick="closeModal('setupModal')" class="py-2 text-slate-400 mt-2">取消</button>
+        </div>
+    </div>
+
+    <div id="rescheduleModal" class="fixed inset-0 bg-black/60 hidden z-[110] p-4 flex items-center justify-center">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl">
+            <h2 class="text-xl font-black mb-6">⚡ 今日臨時變動</h2>
+            <div class="space-y-4">
+                <select id="resched-slot" class="w-full p-4 bg-slate-50 border rounded-2xl font-bold outline-none"></select>
+                <input id="resched-name" placeholder="更動課程名稱" class="w-full p-4 border rounded-2xl font-bold outline-none">
+                <input id="resched-teacher" placeholder="更動老師姓名" class="w-full p-4 border rounded-2xl font-bold outline-none">
+                <button onclick="saveReschedule()" class="w-full bg-amber-500 text-white py-4 rounded-2xl font-bold shadow-lg">立即變更</button>
+                <button onclick="closeModal('rescheduleModal')" class="w-full text-slate-400 py-2 mt-2">取消</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        let wakeLock = null;
-        let isLocked = false;
-        let unlockPassword = localStorage.getItem('unlockPassword') || "1234";
+        // --- 初始化基礎數據 ---
+        const timeSlots = [{id:1,start:"08:10",end:"09:00"},{id:2,start:"09:10",end:"10:00"},{id:3,start:"10:10",end:"11:00"},{id:4,start:"11:10",end:"12:00"},{id:5,start:"13:10",end:"14:00"},{id:6,start:"14:10",end:"15:00"},{id:7,start:"15:20",end:"16:10"},{id:8,start:"16:20",end:"17:10"}];
         let baseSchedule = JSON.parse(localStorage.getItem('baseSchedule')) || {};
+        let reschedules = JSON.parse(localStorage.getItem('reschedules')) || {};
         let dayEvents = JSON.parse(localStorage.getItem('dayEvents')) || {};
-        let timeSlots = [{id:1,start:"08:10",end:"09:00"},{id:2,start:"09:10",end:"10:00"},{id:3,start:"10:10",end:"11:00"},{id:4,start:"11:10",end:"12:00"},{id:5,start:"13:10",end:"14:00"},{id:6,start:"14:10",end:"15:00"},{id:7,start:"15:20",end:"16:10"},{id:8,start:"16:20",end:"17:10"}];
+        let teacherDB = JSON.parse(localStorage.getItem('teacherDB')) || {};
+        let unlockPassword = localStorage.getItem('unlockPassword') || "1234";
+        let isLocked = false;
+        let wakeLock = null;
+        let calViewDate = new Date();
+        let selectedDateStr = new Date().toISOString().split('T')[0];
 
-        // --- 核心鎖定邏輯：移除視覺霧化 ---
-        function handleLockButton() {
-            if (!isLocked) {
-                isLocked = true;
-                document.getElementById('lock-btn').innerText = '🔒';
-                document.getElementById('lock-btn').classList.replace('bg-slate-100', 'bg-red-500');
-                document.getElementById('lock-btn').classList.add('text-white');
-                
-                // 顯示透明層阻擋點擊
-                document.getElementById('lock-shield').classList.remove('hidden');
-                document.body.classList.add('locked');
-            } else {
-                openModal('authModal');
-            }
-        }
-
-        function confirmUnlock() {
-            if (document.getElementById('unlock-pw').value === unlockPassword) {
-                isLocked = false;
-                document.getElementById('lock-btn').innerText = '🔓';
-                document.getElementById('lock-btn').classList.replace('bg-red-500', 'bg-slate-100');
-                document.getElementById('lock-btn').classList.remove('text-white');
-                
-                document.getElementById('lock-shield').classList.add('hidden');
-                document.body.classList.remove('locked');
-                closeModal('authModal');
-                document.getElementById('unlock-pw').value = "";
-            } else { alert("密碼錯誤"); }
-        }
-
-        // --- 螢幕長亮邏輯 ---
-        async function toggleWakeLock(enabled) {
-            if (enabled && 'wakeLock' in navigator) {
-                try {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    document.getElementById('wake-icon').classList.replace('text-slate-300', 'text-amber-400');
-                } catch (e) { document.getElementById('wake-toggle').checked = false; }
-            } else if (wakeLock) {
-                await wakeLock.release();
-                wakeLock = null;
-                document.getElementById('wake-icon').classList.replace('text-amber-400', 'text-slate-300');
-            }
-        }
-
-        // 監聽分頁回復時重新鎖定螢幕長亮
-        document.addEventListener('visibilitychange', async () => {
-            if (wakeLock !== null && document.visibilityState === 'visible') {
-                wakeLock = await navigator.wakeLock.request('screen');
-            }
-        });
-
-        // 其餘邏輯 (時鐘、課表、搜尋等) 與之前版本一致...
+        // --- 核心時鐘與倒數引擎 ---
         function updateClock() {
             const now = new Date();
             document.getElementById('clock').innerText = now.toTimeString().split(' ')[0];
             document.getElementById('date-display').innerText = `${now.getMonth()+1}/${now.getDate()}`;
             
             const day = now.getDay(), todayStr = now.toISOString().split('T')[0];
+            const timeVal = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
             const curTimeStr = now.toTimeString().substring(0,5);
-            
-            let html = '';
+
+            document.getElementById('today-note-display').innerText = dayEvents[todayStr] || "";
+
+            let found = false, currentL = null, nextL = null, html = '';
+
             timeSlots.forEach(s => {
-                const lesson = baseSchedule[`${day}-${s.id}`] || {name:"", teacher:""};
+                const lesson = (reschedules[todayStr] && reschedules[todayStr][s.id]) ? reschedules[todayStr][s.id] : (baseSchedule[`${day}-${s.id}`] || {name:"",teacher:"",loc:""});
                 const isActive = curTimeStr >= s.start && curTimeStr < s.end;
-                html += `<div class="p-5 rounded-3xl bg-white flex items-center gap-4 ${isActive?'is-now shadow-md border-l-4 border-blue-500':''}"><div class="text-center min-w-[50px] font-mono text-xs text-slate-300 font-bold">#${s.id}<br>${s.start}</div><div class="flex-1"><div class="font-black text-slate-800 text-sm">${lesson.name || '空堂'}</div><div class="text-[10px] text-slate-400 font-bold uppercase">${lesson.teacher || '--'}</div></div></div>`;
+                if(isActive) currentL = lesson;
+                if(curTimeStr < s.start && !nextL && lesson.name) nextL = lesson;
+
+                html += `<div class="p-5 rounded-3xl bg-white flex items-center gap-4 transition-all ${isActive?'is-now shadow-md border-l-4 border-blue-500 scale-[1.02]':''}"><div class="text-center min-w-[50px] font-mono text-xs text-slate-300 font-bold">#${s.id}<br>${s.start}</div><div class="flex-1"><div class="font-black text-slate-800 text-sm">${lesson.name || '空堂'}</div><div class="text-[10px] text-slate-400 font-bold uppercase">${lesson.teacher || '--'}</div></div></div>`;
+
+                const st = parseTime(s.start), ed = parseTime(s.end);
+                if(!found && timeVal < st) {
+                    const rem = st - timeVal;
+                    document.getElementById('status-label').innerText = "上課倒數";
+                    document.getElementById('countdown-timer').innerText = formatDuration(rem);
+                    document.getElementById('countdown-timer').className = "text-6xl font-black font-mono text-green-400";
+                    found = true;
+                } else if(!found && timeVal >= st && timeVal < ed) {
+                    const rem = ed - timeVal;
+                    document.getElementById('status-label').innerText = "下課倒數";
+                    document.getElementById('countdown-timer').innerText = formatDuration(rem);
+                    document.getElementById('countdown-timer').className = "text-6xl font-black font-mono text-blue-400";
+                    found = true;
+                }
             });
-            document.getElementById('schedule-list').innerHTML = html;
-        }
 
-        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-        function toggleMenu(s) { if(!isLocked) document.getElementById('systemMenu').classList.toggle('hidden', !s); }
-        function saveNewPassword() { unlockPassword = document.getElementById('set-new-pw').value; localStorage.setItem('unlockPassword', unlockPassword); alert("密碼已更新"); }
-
-        setInterval(updateClock, 1000);
-        updateClock();
-    </script>
-</body>
-</html>
+            if(!found) {
+                document.getElementById('status-label').innerText = "放學時間";
+                document.getElementById('countdown-timer').innerText = "--:--";
+                document.getElementById('top-lesson-name').innerText = "SCHOOL OFF";
+                document.getElementById('top-lesson-detail').innerText = "今日課程已全部結束";
+            } else {
+                const target = currentL || nextL || {name:"休息時間", teacher:"-", loc:"-"};
+                document.getElementById('top-lesson-name').innerText = target.name || "休息時間";
+                document.getElementById('top-lesson-detail').innerText = `${target.teacher
