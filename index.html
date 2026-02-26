@@ -3,63 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>電一乙 課表 PWA</title>
+    <title>全校課表查詢 PWA</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4a90e2">
     <style>
         body { font-family: -apple-system, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
-        h2 { text-align: center; color: #333; }
+        .header { text-align: center; margin-bottom: 20px; }
+        select { padding: 10px; font-size: 16px; border-radius: 5px; width: 100%; max-width: 300px; }
         .schedule-container { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        th, td { border: 1px solid #ddd; padding: 12px 8px; text-align: center; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 12px 8px; text-align: center; font-size: 14px; min-width: 60px; }
         th { background-color: #4a90e2; color: white; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        .current-day { background-color: #fff9c4 !important; font-weight: bold; border: 2px solid #fbc02d; }
-        .time { font-size: 11px; color: #666; display: block; }
+        .current-day { background-color: #fff9c4 !important; font-weight: bold; }
+        .time { font-size: 10px; color: #666; display: block; }
+        .break-row { background:#eee; font-size: 12px; }
     </style>
 </head>
 <body>
 
-<h2>114學年度第2學期 課表<br><small>電一乙 (導師: 洪坤聰)</small></h2>
-
-<div class="schedule-container">
-    <table id="timetable">
-        <thead>
-            <tr>
-                <th>節</th>
-                <th>一</th>
-                <th>二</th>
-                <th>三</th>
-                <th>四</th>
-                <th>五</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr><td>1<span class="time">08:10</span></td><td>全民國防</td><td>國語文</td><td>積木程式</td><td>健康護理</td><td>基本電學</td></tr>
-            <tr><td>2<span class="time">09:10</span></td><td>音樂</td><td>國語文</td><td>積木程式</td><td>閩南語文</td><td>基本電學</td></tr>
-            <tr><td>3<span class="time">10:10</span></td><td>應用英文</td><td>英語文</td><td>積木程式</td><td>生活科技</td><td>物理</td></tr>
-            <tr><td>4<span class="time">11:10</span></td><td>數學</td><td>數學</td><td>歷史</td><td>生活科技</td><td>歷史</td></tr>
-            <tr><td colspan="6" style="background:#eee; font-size:12px;">午休</td></tr>
-            <tr><td>5<span class="time">13:10</span></td><td>基本電學實習</td><td>物理</td><td>週會/聯課</td><td>國語文</td><td>英語文</td></tr>
-            <tr><td>6<span class="time">14:10</span></td><td>基本電學實習</td><td>體育</td><td>週會/聯課</td><td>藝術生活</td><td>數學</td></tr>
-            <tr><td>7<span class="time">15:20</span></td><td>基本電學實習</td><td>基本電學</td><td>班會</td><td>數學</td><td>體育</td></tr>
-        </tbody>
-    </table>
+<div class="header">
+    <h2>校園課表 PWA</h2>
+    <select id="classSelect" onchange="renderSchedule()">
+        <option value="電一乙">電一乙</option>
+        <option value="電一甲">電一甲 (範例)</option>
+        </select>
 </div>
 
+<div class="schedule-container" id="scheduleOutput">
+    </div>
+
 <script>
-    // 自動高亮今天的日期 (1-5)
-    const day = new Date().getDay();
-    if (day >= 1 && day <= 5) {
-        const rows = document.querySelectorAll('tr');
-        rows.forEach(row => {
-            const cell = row.cells[day];
-            if (cell) cell.classList.add('current-day');
+    // 這裡存放所有班級的課表資料
+    const schedules = {
+        "電一乙": [
+            ["全民國防", "國語文", "積木程式", "健康護理", "基本電學"],
+            ["音樂", "國語文", "積木程式", "閩南語文", "基本電學"],
+            ["應用英文", "英語文", "積木程式", "生活科技", "物理"],
+            ["數學", "數學", "歷史", "生活科技", "歷史"],
+            ["基本電學實習", "物理", "週會/聯課", "國語文", "英語文"],
+            ["基本電學實習", "體育", "週會/聯課", "藝術生活", "數學"],
+            ["基本電學實習", "基本電學", "班會", "數學", "體育"]
+        ],
+        "電一甲": [
+            ["國語文", "數學", "體育", "基本電學", "英文"],
+            ["國語文", "數學", "體育", "基本電學", "英文"],
+            ["物理", "國語文", "電子實習", "歷史", "週會"],
+            ["物理", "國語文", "電子實習", "歷史", "週會"],
+            ["...", "...", "...", "...", "..."],
+            ["...", "...", "...", "...", "..."],
+            ["...", "...", "...", "...", "..."]
+        ]
+    };
+
+    const timeSlots = ["08:10", "09:10", "10:10", "11:10", "13:10", "14:10", "15:20"];
+
+    function renderSchedule() {
+        const className = document.getElementById('classSelect').value;
+        localStorage.setItem('selectedClass', className); // 儲存選擇
+        const data = schedules[className];
+        const day = new Date().getDay();
+
+        let html = `<table><thead><tr><th>節</th>${['一','二','三','四','五'].map((d, i) => `<th class="${day === i+1 ? 'current-day' : ''}">${d}</th>`).join('')}</tr></thead><tbody>`;
+
+        data.forEach((row, index) => {
+            // 加入午休行
+            if (index === 4) {
+                html += `<tr class="break-row"><td colspan="6">午休 (12:00 - 13:10)</td></tr>`;
+            }
+            
+            html += `<tr><td>${index + 1}<span class="time">${timeSlots[index]}</span></td>`;
+            row.forEach((cell, cellIndex) => {
+                const isToday = (day === cellIndex + 1);
+                html += `<td class="${isToday ? 'current-day' : ''}">${cell}</td>`;
+            });
+            html += `</tr>`;
         });
-        document.querySelectorAll('th')[day].classList.add('current-day');
+
+        html += `</tbody></table>`;
+        document.getElementById('scheduleOutput').innerHTML = html;
     }
 
-    // 註冊 Service Worker
+    // 初始化：讀取上次選擇或預設值
+    window.onload = () => {
+        const savedClass = localStorage.getItem('selectedClass');
+        if (savedClass && schedules[savedClass]) {
+            document.getElementById('classSelect').value = savedClass;
+        }
+        renderSchedule();
+    };
+
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js');
     }
