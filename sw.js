@@ -1,5 +1,5 @@
 // 每次修改 data.js 後，請把此版本號加 1 (例如 v1.1 -> v1.2)
-const CACHE_NAME = 'timetable-v1.2';
+const CACHE_NAME = 'timetable-v2.2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
