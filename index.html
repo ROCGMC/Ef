@@ -9,8 +9,8 @@
         .is-now { border: 3px solid #3b82f6; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
         .blink { animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.5; } }
-        .calendar-day.active { background-color: #3b82f6; color: white; border-radius: 99px; font-weight: bold; }
+        .locked-overlay { position: fixed; inset: 0; z-index: 80; cursor: pointer; }
+        .calendar-day.active { background-color: #3b82f6; color: white; border-radius: 99px; }
         .calendar-day.has-event::after { content: ''; display: block; width: 4px; height: 4px; background: #f59e0b; border-radius: 50%; margin: 0 auto; }
         .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -22,37 +22,56 @@
 </head>
 <body class="bg-slate-100 min-h-screen">
 
-    <nav class="flex justify-between items-center p-4 bg-white shadow-sm border-b sticky top-0 z-40">
+    <div id="lock-shield" class="locked-overlay hidden" onclick="triggerAuth()"></div>
+
+    <nav class="flex justify-between items-center p-4 bg-white shadow-sm border-b sticky top-0 z-[90]">
         <div class="flex items-center gap-2">
-            <span id="wake-icon" class="text-slate-300 transition-colors">💡</span>
+            <span id="wake-icon" class="text-slate-300">💡</span>
             <div class="text-sm font-bold text-slate-800" id="date-display">--/--</div>
         </div>
-        <div class="text-xl font-mono font-black text-slate-800" id="clock">00:00:00</div>
-        <button onclick="toggleMenu(true)" class="text-slate-600 p-2 active:bg-slate-100 rounded-full">
+        <div class="flex items-center gap-3">
+            <div class="text-lg font-mono font-black text-slate-800" id="clock">00:00:00</div>
+            <button id="lock-btn" onclick="toggleLock()" class="bg-slate-100 p-2 rounded-xl transition-all">
+                <span id="lock-icon" class="text-xl">🔓</span>
+            </button>
+        </div>
+        <button onclick="toggleMenu(true)" class="text-slate-600 p-2 ml-1">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
         </button>
     </nav>
 
     <div class="max-w-md mx-auto p-4">
-        <div class="bg-slate-900 rounded-[2.5rem] p-8 shadow-2xl mb-6 text-center text-white border-b-8 border-slate-800">
-            <p id="status-label" class="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 mb-2">LOADING SYSTEM</p>
+        <div class="bg-slate-900 rounded-[2.5rem] p-8 shadow-2xl mb-6 text-center text-white border-b-8 border-slate-800 relative overflow-hidden">
+            <p id="status-label" class="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 mb-2">SYSTEM ACTIVE</p>
             <h1 id="top-lesson-name" class="text-3xl font-black truncate mb-1">--</h1>
-            <p id="top-lesson-detail" class="text-xs text-slate-400 font-bold mb-4 tracking-wide">--</p>
-            
-            <div class="flex items-center justify-center gap-3 mb-4">
-                <div id="countdown-timer" class="text-6xl font-black font-mono tracking-tighter">--:--</div>
-            </div>
-
+            <p id="top-lesson-detail" class="text-xs text-slate-400 font-bold mb-4">--</p>
+            <div id="countdown-timer" class="text-6xl font-black font-mono tracking-tighter mb-4">--:--</div>
             <div id="cal-tag" class="inline-block text-[10px] font-bold bg-white/10 text-slate-300 px-3 py-1 rounded-full hidden"></div>
             <div id="today-note-display" class="text-xs text-amber-400 font-bold mt-2 truncate"></div>
         </div>
 
         <div class="grid grid-cols-2 gap-4 mb-6">
-            <button onclick="openCalendar()" class="bg-white p-5 rounded-3xl font-bold text-slate-700 shadow-sm border-b-4 border-slate-200 active:translate-y-1 active:border-b-0 transition-all text-sm">📅 行事曆備註</button>
+            <button onclick="openCalendar()" class="bg-white p-5 rounded-3xl font-bold text-slate-700 shadow-sm border-b-4 border-slate-200 active:translate-y-1 active:border-b-0 transition-all text-sm">📅 行事曆</button>
             <button onclick="openReschedule()" class="bg-white p-5 rounded-3xl font-bold text-slate-700 shadow-sm border-b-4 border-slate-200 active:translate-y-1 active:border-b-0 transition-all text-sm">⚡ 今日調課</button>
         </div>
 
-        <div id="schedule-list" class="space-y-3"></div>
+        <div id="schedule-list" class="space-y-3 pb-10"></div>
+    </div>
+
+    <div id="authModal" class="fixed inset-0 bg-slate-900/95 hidden z-[100] flex items-center justify-center p-6">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-sm p-8 text-center shadow-2xl">
+            <div class="mb-6">
+                <div class="text-4xl mb-2">🛡️</div>
+                <h2 class="text-xl font-black">安全驗證</h2>
+                <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">請輸入密碼組合以解鎖</p>
+            </div>
+            <div class="space-y-4">
+                <input id="pw1" type="password" placeholder="PASSWORD 1" class="w-full p-4 bg-slate-100 rounded-2xl text-center font-mono font-bold border-2 border-transparent focus:border-blue-500 outline-none">
+                <div class="text-slate-300 font-black">✕</div>
+                <input id="pw2" type="password" placeholder="PASSWORD 2" class="w-full p-4 bg-slate-100 rounded-2xl text-center font-mono font-bold border-2 border-transparent focus:border-blue-500 outline-none">
+                <button onclick="checkAuth()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black shadow-xl active:scale-95 transition-transform mt-2">執行解鎖算式</button>
+            </div>
+        </div>
     </div>
 
     <div id="systemMenu" class="fixed inset-0 bg-black/60 hidden z-[100] backdrop-blur-sm">
@@ -64,35 +83,13 @@
                     <label class="switch"><input type="checkbox" id="wake-toggle" onchange="toggleWakeLock(this.checked)"><span class="slider"></span></label>
                 </div>
                 <div class="bg-amber-50 p-5 rounded-3xl border border-amber-100">
-                    <p class="font-bold text-amber-800 text-xs mb-3 flex justify-between"><span>倒數校準</span><span id="offset-val" class="font-mono text-lg">0s</span></p>
-                    <input type="range" id="offset-slider" min="-60" max="60" value="0" class="w-full h-2 bg-amber-200 rounded-lg appearance-none cursor-pointer" oninput="document.getElementById('offset-val').innerText = this.value + 's'">
-                    <button onclick="saveOffset()" class="w-full mt-4 bg-amber-500 text-white py-3 rounded-xl text-xs font-bold">更新校準</button>
+                    <p class="font-bold text-amber-800 text-xs mb-3">倒數校準: <span id="offset-val" class="font-mono">0s</span></p>
+                    <input type="range" id="offset-slider" min="-60" max="60" value="0" class="w-full" oninput="document.getElementById('offset-val').innerText = this.value + 's'">
+                    <button onclick="saveOffset()" class="w-full mt-4 bg-amber-500 text-white py-3 rounded-xl text-xs font-bold">更新</button>
                 </div>
                 <button onclick="toggleMenu(false); openModal('setupModal');" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold">編輯基礎課表</button>
             </div>
-            <button onclick="toggleMenu(false)" class="w-full text-slate-400 py-4 font-bold">關閉選單</button>
-        </div>
-    </div>
-
-    <div id="calendarModal" class="fixed inset-0 bg-black/60 hidden z-[110] p-4 flex items-center justify-center">
-        <div class="bg-white rounded-[2.5rem] w-full max-w-md p-6 max-h-[90vh] flex flex-col shadow-2xl">
-            <div class="flex justify-between items-center mb-4 px-2">
-                <h2 id="calendar-month-year" class="font-black text-lg text-slate-800">--</h2>
-                <div class="flex gap-2">
-                    <button onclick="changeMonth(-1)" class="p-2 bg-slate-100 rounded-xl">＜</button>
-                    <button onclick="changeMonth(1)" class="p-2 bg-slate-100 rounded-xl">＞</button>
-                </div>
-            </div>
-            <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-black text-slate-400 mb-2">
-                <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
-            </div>
-            <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center mb-4"></div>
-            <div class="bg-slate-50 p-4 rounded-3xl flex-1 overflow-y-auto">
-                <p id="selected-date-text" class="text-[10px] font-black text-blue-500 mb-2 tracking-widest uppercase">選擇日期</p>
-                <input id="cal-note" type="text" class="w-full p-3 border-2 border-slate-200 rounded-2xl text-sm mb-4 focus:border-blue-400 outline-none transition-all" placeholder="輸入當日記事 (例: 段考、運動會)">
-                <button onclick="saveCalendarData()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg">儲存日期記事</button>
-            </div>
-            <button onclick="closeModal('calendarModal')" class="py-4 text-slate-400 font-bold">返回首頁</button>
+            <button onclick="toggleMenu(false)" class="text-slate-400 py-4 font-bold">關閉</button>
         </div>
     </div>
 
@@ -103,19 +100,32 @@
             <div id="setup-inputs" class="flex-1 overflow-y-auto space-y-3 pr-1"></div>
             <div class="grid grid-cols-2 gap-3 mt-6">
                 <button onclick="closeModal('setupModal')" class="bg-slate-100 text-slate-500 py-4 rounded-2xl font-bold">取消</button>
-                <button onclick="saveBaseSchedule()" class="bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg">儲存變更</button>
+                <button onclick="saveBaseSchedule()" class="bg-blue-600 text-white py-4 rounded-2xl font-bold">儲存</button>
             </div>
+        </div>
+    </div>
+
+    <div id="calendarModal" class="fixed inset-0 bg-black/60 hidden z-[110] p-4 flex items-center justify-center">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-md p-6 max-h-[90vh] flex flex-col shadow-2xl">
+            <div class="flex justify-between items-center mb-4 px-2"><h2 id="calendar-month-year" class="font-black text-lg"></h2><div class="flex gap-2"><button onclick="changeMonth(-1)" class="p-2 bg-slate-100 rounded-xl">＜</button><button onclick="changeMonth(1)" class="p-2 bg-slate-100 rounded-xl">＞</button></div></div>
+            <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center mb-4 text-xs font-bold"></div>
+            <div class="bg-slate-50 p-4 rounded-3xl flex-1 overflow-y-auto">
+                <p id="selected-date-text" class="text-[10px] font-black text-blue-500 mb-2"></p>
+                <input id="cal-note" type="text" class="w-full p-3 border-2 border-slate-200 rounded-2xl text-sm mb-4" placeholder="記事內容">
+                <button onclick="saveCalendarData()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold">儲存記事</button>
+            </div>
+            <button onclick="closeModal('calendarModal')" class="py-4 text-slate-400 font-bold">關閉</button>
         </div>
     </div>
 
     <div id="rescheduleModal" class="fixed inset-0 bg-black/60 hidden z-[110] p-4 flex items-center justify-center">
         <div class="bg-white rounded-[2.5rem] w-full max-w-md p-8">
-            <h2 class="text-xl font-black mb-6">⚡ 今日臨時更換</h2>
+            <h2 class="text-xl font-black mb-6">⚡ 今日調課</h2>
             <div class="space-y-4">
-                <div><label class="text-[10px] font-bold text-slate-400 ml-1">選擇節次</label><select id="resched-slot" class="w-full p-4 border-2 border-slate-100 rounded-2xl bg-slate-50 font-bold"></select></div>
-                <div><label class="text-[10px] font-bold text-slate-400 ml-1">課程名稱</label><input id="resched-name" type="text" class="w-full p-4 border-2 border-slate-100 rounded-2xl" placeholder="例: 體育"></div>
-                <div><label class="text-[10px] font-bold text-slate-400 ml-1">授課老師</label><input id="resched-teacher" type="text" class="w-full p-4 border-2 border-slate-100 rounded-2xl" placeholder="例: 王大明"></div>
-                <button onclick="saveTodayReschedule()" class="w-full bg-amber-500 text-white py-4 rounded-2xl mt-4 font-bold shadow-xl">立即生效</button>
+                <select id="resched-slot" class="w-full p-4 border-2 border-slate-100 rounded-2xl bg-slate-50 font-bold"></select>
+                <input id="resched-name" type="text" class="w-full p-4 border-2 border-slate-100 rounded-2xl" placeholder="新課程名稱">
+                <input id="resched-teacher" type="text" class="w-full p-4 border-2 border-slate-100 rounded-2xl" placeholder="新老師名稱">
+                <button onclick="saveTodayReschedule()" class="w-full bg-amber-500 text-white py-4 rounded-2xl mt-4 font-bold">確認變更</button>
                 <button onclick="closeModal('rescheduleModal')" class="w-full text-slate-400 py-2 font-bold">取消</button>
             </div>
         </div>
@@ -129,33 +139,71 @@
         let reschedules = JSON.parse(localStorage.getItem('reschedules')) || {};
         let dayEvents = JSON.parse(localStorage.getItem('dayEvents')) || {};
         let timeOffset = parseInt(localStorage.getItem('timeOffset')) || 0;
+        let isLocked = false;
         let wakeLock = null;
-        let calViewDate = new Date();
-        let selectedDateStr = new Date().toISOString().split('T')[0];
+
+        // --- 核心鎖定邏輯 ---
+        function toggleLock() {
+            if (!isLocked) {
+                isLocked = true;
+                document.getElementById('lock-icon').innerText = '🔒';
+                document.getElementById('lock-btn').classList.replace('bg-slate-100', 'bg-red-500');
+                document.getElementById('lock-btn').classList.add('text-white');
+                document.getElementById('lock-shield').classList.remove('hidden');
+            } else {
+                triggerAuth();
+            }
+        }
+
+        function triggerAuth() {
+            document.getElementById('authModal').classList.remove('hidden');
+            document.getElementById('pw1').focus();
+        }
+
+        function checkAuth() {
+            const p1 = document.getElementById('pw1').value;
+            const p2 = document.getElementById('pw2').value;
+            
+            // 邏輯：p1 * p2 等於 981103 * 990420
+            const targetProduct = 981103 * 990420; // 971714535260
+            
+            if (Number(p1) * Number(p2) === targetProduct && p1 === "981103") {
+                isLocked = false;
+                document.getElementById('lock-icon').innerText = '🔓';
+                document.getElementById('lock-btn').classList.replace('bg-red-500', 'bg-slate-100');
+                document.getElementById('lock-btn').classList.remove('text-white');
+                document.getElementById('lock-shield').classList.add('hidden');
+                document.getElementById('authModal').classList.add('hidden');
+                document.getElementById('pw1').value = "";
+                document.getElementById('pw2').value = "";
+                alert("安全鎖已解除");
+            } else {
+                alert("密碼錯誤，算式不成立！");
+            }
+        }
 
         // --- 核心更新循環 ---
         function updateClock() {
             const now = new Date();
             document.getElementById('clock').innerText = now.toTimeString().split(' ')[0];
             document.getElementById('date-display').innerText = `${now.getMonth()+1}/${now.getDate()}`;
-
             const calNow = new Date(now.getTime() + timeOffset * 1000);
+            const todayStr = calNow.toISOString().split('T')[0];
+            const day = calNow.getDay();
+            
+            // 校準標籤
             const tag = document.getElementById('cal-tag');
             if(timeOffset !== 0) {
                 tag.innerText = `CALIBRATED: ${timeOffset > 0 ? '+' : ''}${timeOffset}s`;
                 tag.classList.remove('hidden');
             } else { tag.classList.add('hidden'); }
 
-            const todayStr = calNow.toISOString().split('T')[0];
-            const day = calNow.getDay();
-            document.getElementById('today-note-display').innerText = dayEvents[todayStr] || (holidays2026[todayStr] ? `國定假日: ${holidays2026[todayStr]}` : "");
+            document.getElementById('today-note-display').innerText = dayEvents[todayStr] || (holidays2026[todayStr] ? `假日: ${holidays2026[todayStr]}` : "");
 
-            const isHoliday = (day === 0 || day === 6 || holidays2026[todayStr] || (dayEvents[todayStr] && dayEvents[todayStr].includes("假")));
-            if(isHoliday) {
+            if(day === 0 || day === 6 || holidays2026[todayStr] || (dayEvents[todayStr] && dayEvents[todayStr].includes("假"))) {
                 document.getElementById('top-lesson-name').innerText = "HAPPY HOLIDAY";
-                document.getElementById('top-lesson-detail').innerText = "休息是為了走更長遠的路";
                 document.getElementById('countdown-timer').innerText = "OFF";
-                document.getElementById('schedule-list').innerHTML = '<div class="text-center py-20 opacity-20 font-black text-2xl italic">NO SCHOOL TODAY</div>';
+                document.getElementById('schedule-list').innerHTML = '<div class="text-center py-20 opacity-20 font-black text-2xl italic">NO SCHOOL</div>';
                 return;
             }
             handleTimers(calNow);
@@ -164,117 +212,34 @@
         function handleTimers(calNow) {
             const time = calNow.getHours() * 3600 + calNow.getMinutes() * 60 + calNow.getSeconds();
             const timer = document.getElementById('countdown-timer'), label = document.getElementById('status-label');
-            const day = calNow.getDay(), today = calNow.toISOString().split('T')[0];
-            const curTimeStr = calNow.toTimeString().substring(0,5);
-            
+            const day = calNow.getDay(), today = calNow.toISOString().split('T')[0], curTimeStr = calNow.toTimeString().substring(0,5);
             let found = false, currentL = null, nextL = null, html = '';
 
             timeSlots.forEach(s => {
                 const lesson = (reschedules[today] && reschedules[today][s.id]) ? reschedules[today][s.id] : (baseSchedule[`${day}-${s.id}`] || {name:"",teacher:"",loc:""});
                 const isActive = curTimeStr >= s.start && curTimeStr < s.end;
                 const isUpcoming = curTimeStr < s.start && !nextL && lesson.name;
-
                 if(isActive) currentL = lesson;
                 if(isUpcoming) nextL = lesson;
-
                 html += `<div class="p-5 rounded-3xl bg-white shadow-sm flex items-center gap-4 transition-all ${isActive?'is-now border-l-4 border-blue-500 scale-[1.02] shadow-md':''}"><div class="text-center min-w-[50px] font-mono text-xs text-slate-400 font-bold">#${s.id}<br>${s.start}</div><div class="flex-1"><div class="font-black text-slate-800 text-sm">${lesson.name || '空堂'}</div><div class="text-[10px] text-slate-400 font-bold uppercase tracking-tight">${lesson.teacher || '--'} ${lesson.loc ? ' @ '+lesson.loc : ''}</div></div></div>`;
-                
                 const st = parseTime(s.start), ed = parseTime(s.end);
                 if(!found && time >= st && time < ed) {
-                    label.innerText = "下課倒數";
-                    timer.innerText = formatDuration(ed - time);
-                    timer.className = "text-6xl font-black font-mono text-blue-400";
-                    found = true;
+                    label.innerText = "下課倒數"; timer.innerText = formatDuration(ed - time);
+                    timer.className = "text-6xl font-black font-mono text-blue-400"; found = true;
                 } else if(!found && time < st) {
-                    const rem = st - time;
-                    label.innerText = rem <= 60 ? "即將敲鐘" : "下節上課";
+                    const rem = st - time; label.innerText = rem <= 60 ? "即將敲鐘" : "下節上課";
                     timer.innerText = formatDuration(rem);
-                    timer.className = `text-6xl font-black font-mono ${rem <= 60 ? 'text-red-500 blink' : 'text-green-400'}`;
-                    found = true;
+                    timer.className = `text-6xl font-black font-mono ${rem <= 60 ? 'text-red-500 blink' : 'text-green-400'}`; found = true;
                 }
             });
-
-            if(!found) {
-                label.innerText = "放學時間"; timer.innerText = "--:--"; 
-                document.getElementById('top-lesson-name').innerText = "SCHOOL OFF";
-                document.getElementById('top-lesson-detail').innerText = "辛苦了，早點休息！";
-            } else {
-                const targetL = currentL || nextL || {name:"休息時間", teacher:"-", loc:"-"};
-                document.getElementById('top-lesson-name').innerText = targetL.name || "休息時間";
-                document.getElementById('top-lesson-detail').innerText = `${targetL.teacher || '-'} ${targetL.loc ? '| '+targetL.loc : ''}`;
-            }
+            if(!found) { label.innerText = "放學時間"; timer.innerText = "--:--"; document.getElementById('top-lesson-name').innerText = "SCHOOL OFF"; }
+            else { const targetL = currentL || nextL || {name:"休息時間", teacher:"-", loc:"-"}; document.getElementById('top-lesson-name').innerText = targetL.name || "休息時間"; document.getElementById('top-lesson-detail').innerText = `${targetL.teacher || '-'} ${targetL.loc ? '| '+targetL.loc : ''}`; }
             document.getElementById('schedule-list').innerHTML = html;
         }
 
-        // --- 行事曆邏輯修復 ---
-        function openCalendar() {
-            renderCalendar();
-            selectCalendarDay(selectedDateStr);
-            openModal('calendarModal');
-        }
-
-        function renderCalendar() {
-            const y = calViewDate.getFullYear(), m = calViewDate.getMonth();
-            document.getElementById('calendar-month-year').innerText = `${y}年 ${m+1}月`;
-            const first = new Date(y, m, 1).getDay(), last = new Date(y, m+1, 0).getDate();
-            const container = document.getElementById('calendar-days');
-            container.innerHTML = '';
-            for(let i=0; i<first; i++) container.innerHTML += '<div></div>';
-            for(let d=1; d<=last; d++) {
-                const ds = `${y}-${(m+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
-                const hasEvent = dayEvents[ds] || reschedules[ds];
-                container.innerHTML += `<div onclick="selectCalendarDay('${ds}')" class="p-2 cursor-pointer text-sm font-bold calendar-day ${selectedDateStr===ds?'active':''} ${hasEvent?'has-event':''}">${d}</div>`;
-            }
-        }
-
-        function selectCalendarDay(ds) {
-            selectedDateStr = ds;
-            document.getElementById('selected-date-text').innerText = `已選日期：${ds}`;
-            document.getElementById('cal-note').value = dayEvents[ds] || "";
-            renderCalendar();
-        }
-
-        function saveCalendarData() {
-            const note = document.getElementById('cal-note').value.trim();
-            if(note) dayEvents[selectedDateStr] = note; else delete dayEvents[selectedDateStr];
-            localStorage.setItem('dayEvents', JSON.stringify(dayEvents));
-            alert('記事已更新');
-            renderCalendar();
-        }
-
-        // --- 課表編輯邏輯 ---
-        function renderSetupInputs(day) {
-            let h = '';
-            timeSlots.forEach(s => {
-                const d = baseSchedule[`${day}-${s.id}`] || {name:"",teacher:"",loc:""};
-                h += `<div class="p-4 bg-slate-50 rounded-[1.5rem] space-y-2 border border-slate-100">
-                    <div class="text-[10px] font-black text-blue-500 uppercase">第 ${s.id} 節 (${s.start})</div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input id="in-n-${s.id}" value="${d.name}" placeholder="課程" class="p-3 border-2 border-white rounded-xl text-sm shadow-inner outline-none focus:border-blue-200">
-                        <input id="in-t-${s.id}" value="${d.teacher}" placeholder="老師" class="p-3 border-2 border-white rounded-xl text-sm shadow-inner outline-none focus:border-blue-200">
-                    </div>
-                    <input id="in-l-${s.id}" value="${d.loc}" placeholder="教室/地點" class="w-full p-3 border-2 border-white rounded-xl text-sm shadow-inner outline-none focus:border-blue-200">
-                </div>`;
-            });
-            document.getElementById('setup-inputs').innerHTML = h;
-        }
-
-        function saveBaseSchedule() {
-            const d = document.getElementById('edit-day-select').value;
-            timeSlots.forEach(s => {
-                baseSchedule[`${d}-${s.id}`] = {
-                    name: document.getElementById(`in-n-${s.id}`).value,
-                    teacher: document.getElementById(`in-t-${s.id}`).value,
-                    loc: document.getElementById(`in-l-${s.id}`).value
-                };
-            });
-            localStorage.setItem('baseSchedule', JSON.stringify(baseSchedule));
-            alert('每週課表儲存成功');
-            closeModal('setupModal');
-        }
-
-        // --- 通用工具 ---
+        // --- 功能模塊 (略有微調以相容鎖定) ---
         function openModal(id) {
+            if(isLocked) { triggerAuth(); return; }
             document.getElementById(id).classList.remove('hidden');
             if(id === 'setupModal') {
                 let opt = ''; for(let i=1;i<=5;i++) opt += `<option value="${i}">星期${['一','二','三','四','五'][i-1]}</option>`;
@@ -282,33 +247,33 @@
                 renderSetupInputs(1);
             }
         }
-        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-        function toggleMenu(s) { document.getElementById('systemMenu').classList.toggle('hidden', !s); }
-        function changeMonth(v) { calViewDate.setMonth(calViewDate.getMonth()+v); renderCalendar(); }
+        function renderSetupInputs(day) {
+            let h = ''; timeSlots.forEach(s => {
+                const d = baseSchedule[`${day}-${s.id}`] || {name:"",teacher:"",loc:""};
+                h += `<div class="p-4 bg-slate-50 rounded-[1.5rem] space-y-2 border border-slate-100"><div class="text-[10px] font-black text-blue-500 uppercase">第 ${s.id} 節</div><div class="grid grid-cols-2 gap-2"><input id="in-n-${s.id}" value="${d.name}" placeholder="課程" class="p-3 border-2 border-white rounded-xl text-sm shadow-inner outline-none"><input id="in-t-${s.id}" value="${d.teacher}" placeholder="老師" class="p-3 border-2 border-white rounded-xl text-sm shadow-inner outline-none"></div><input id="in-l-${s.id}" value="${d.loc}" placeholder="教室" class="w-full p-3 border-2 border-white rounded-xl text-sm shadow-inner outline-none"></div>`;
+            });
+            document.getElementById('setup-inputs').innerHTML = h;
+        }
+        function saveBaseSchedule() { const d = document.getElementById('edit-day-select').value; timeSlots.forEach(s => { baseSchedule[`${d}-${s.id}`] = { name: document.getElementById(`in-n-${s.id}`).value, teacher: document.getElementById(`in-t-${s.id}`).value, loc: document.getElementById(`in-l-${s.id}`).value }; }); localStorage.setItem('baseSchedule', JSON.stringify(baseSchedule)); alert('課表已存'); closeModal('setupModal'); }
+        function openCalendar() { if(isLocked) { triggerAuth(); return; } renderCalendar(); selectCalendarDay(selectedDateStr); openModal('calendarModal'); }
+        function renderCalendar() {
+            const y = calViewDate.getFullYear(), m = calViewDate.getMonth(); document.getElementById('calendar-month-year').innerText = `${y}年 ${m+1}月`;
+            const first = new Date(y, m, 1).getDay(), last = new Date(y, m+1, 0).getDate();
+            const container = document.getElementById('calendar-days'); container.innerHTML = '<div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>';
+            for(let i=0; i<first; i++) container.innerHTML += '<div></div>';
+            for(let d=1; d<=last; d++) { const ds = `${y}-${(m+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`; const hasEvent = dayEvents[ds] || reschedules[ds]; container.innerHTML += `<div onclick="selectCalendarDay('${ds}')" class="p-2 cursor-pointer text-sm font-bold calendar-day ${selectedDateStr===ds?'active':''} ${hasEvent?'has-event':''}">${d}</div>`; }
+        }
+        function selectCalendarDay(ds) { selectedDateStr = ds; document.getElementById('selected-date-text').innerText = `已選：${ds}`; document.getElementById('cal-note').value = dayEvents[ds] || ""; renderCalendar(); }
+        function saveCalendarData() { const note = document.getElementById('cal-note').value.trim(); if(note) dayEvents[selectedDateStr] = note; else delete dayEvents[selectedDateStr]; localStorage.setItem('dayEvents', JSON.stringify(dayEvents)); alert('已存'); }
+        function openReschedule() { if(isLocked) { triggerAuth(); return; } let opt = ''; timeSlots.forEach(s => opt += `<option value="${s.id}">第 ${s.id} 節</option>`); document.getElementById('resched-slot').innerHTML = opt; openModal('rescheduleModal'); }
+        function saveTodayReschedule() { const s = document.getElementById('resched-slot').value, t = new Date().toISOString().split('T')[0]; if(!reschedules[t]) reschedules[t] = {}; reschedules[t][s] = { name: document.getElementById('resched-name').value, teacher: document.getElementById('resched-teacher').value, loc: "" }; localStorage.setItem('reschedules', JSON.stringify(reschedules)); closeModal('rescheduleModal'); }
         function parseTime(s) { const [h, m] = s.split(':').map(Number); return h * 3600 + m * 60; }
         function formatDuration(s) { return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`; }
-        function saveOffset() { 
-            timeOffset = parseInt(document.getElementById('offset-slider').value);
-            localStorage.setItem('timeOffset', timeOffset);
-            toggleMenu(false);
-        }
-        function openReschedule() {
-            let opt = ''; timeSlots.forEach(s => opt += `<option value="${s.id}">第 ${s.id} 節 (${s.start})</option>`);
-            document.getElementById('resched-slot').innerHTML = opt;
-            openModal('rescheduleModal');
-        }
-        function saveTodayReschedule() {
-            const s = document.getElementById('resched-slot').value, t = new Date().toISOString().split('T')[0];
-            if(!reschedules[t]) reschedules[t] = {};
-            reschedules[t][s] = { name: document.getElementById('resched-name').value, teacher: document.getElementById('resched-teacher').value, loc: "" };
-            localStorage.setItem('reschedules', JSON.stringify(reschedules));
-            closeModal('rescheduleModal');
-        }
-        async function toggleWakeLock(e) {
-            if(e && 'wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
-            else if(wakeLock) { wakeLock.release(); wakeLock = null; }
-            document.getElementById('wake-icon').classList.toggle('text-amber-400', e);
-        }
+        function toggleMenu(s) { if(isLocked && s) { triggerAuth(); return; } document.getElementById('systemMenu').classList.toggle('hidden', !s); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function changeMonth(v) { calViewDate.setMonth(calViewDate.getMonth()+v); renderCalendar(); }
+        function saveOffset() { timeOffset = parseInt(document.getElementById('offset-slider').value); localStorage.setItem('timeOffset', timeOffset); toggleMenu(false); }
+        async function toggleWakeLock(e) { if(e && 'wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); else if(wakeLock) { wakeLock.release(); wakeLock = null; } document.getElementById('wake-icon').classList.toggle('text-amber-400', e); }
 
         setInterval(updateClock, 500);
         updateClock();
