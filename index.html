@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>智慧課表終端 V4.7 - 自定義放假版</title>
+    <title>智慧課表終端 V4.8 - 修復搜尋與自定義放假</title>
     <link href="https://fonts.cdnfonts.com/css/digital-7-mono" rel="stylesheet">
     <style>
         :root { --primary: #2196F3; --accent: #00ff41; --bg: #000; --red: #ff3b30; --panel: #111; }
@@ -14,11 +14,7 @@
 
         .info-board { 
             background: linear-gradient(145deg, #1a1a1a, #000); 
-            border: 2px solid #333; 
-            border-radius: 25px; 
-            padding: 20px; 
-            margin-bottom: 15px; 
-            text-align: center;
+            border: 2px solid #333; border-radius: 25px; padding: 20px; margin-bottom: 15px; text-align: center;
             box-shadow: 0 10px 30px rgba(0,0,0,0.8);
         }
         
@@ -59,11 +55,9 @@
 <button class="menu-btn" onclick="toggleModal('menuModal')"><div></div><div></div><div></div></button>
 
 <div class="info-board">
-    <div id="full-date" class="digital">讀取中...</div>
+    <div id="full-date" class="digital">載入中...</div>
     <div id="real-time" class="digital">00:00:00</div>
-    
-    <div id="holiday-banner">🏝️ 自定義放假 / 週末休息</div>
-
+    <div id="holiday-banner">🏝️ 放假模式 / 週末休息</div>
     <div id="on-class-content">
         <div style="margin: 15px 0;">
             <span class="period-badge" id="period-label">偵測中...</span>
@@ -84,15 +78,15 @@
 <div id="menuModal" class="modal">
     <div class="modal-body">
         <h3 style="color:var(--primary)">控制中心</h3>
-        <label>⏱️ 時間微調 (秒):</label>
+        <label>⏱️ 時間偏移 (秒):</label>
         <input type="number" id="offsetInput" step="1" oninput="updateOffset(this.value)">
-        <button class="btn-blue" onclick="toggleModal('calModal')">📅 開啟校園行事曆 / 備註</button>
+        <button class="btn-blue" onclick="toggleModal('calModal')">📅 行事曆備註 (/放假)</button>
         <hr style="border-color:#333">
-        <h4>🔍 教師追蹤</h4>
-        <input type="text" id="tSearch" placeholder="輸入老師名字..." oninput="handleSearch()">
-        <div id="searchInfo" style="background:#000; padding:15px; border-radius:10px; font-size:14px; color:var(--accent); min-height:40px;"></div>
+        <h4>🔍 教師位置追蹤</h4>
+        <input type="text" id="tSearch" placeholder="輸入老師全名或姓氏..." oninput="handleSearch()">
+        <div id="searchInfo" style="background:#000; padding:15px; border-radius:10px; font-size:15px; color:var(--accent); min-height:50px; border:1px solid #333; white-space: pre-line;"></div>
         <hr style="border-color:#333">
-        <h4>🛠️ 核心 JSON 資料庫</h4>
+        <h4>🛠️ 資料庫 (JSON)</h4>
         <textarea id="jsonDB" style="height:120px;"></textarea>
         <button class="btn-green" onclick="saveDB()">💾 儲存並更新</button>
         <button onclick="toggleModal('menuModal')" style="background:#333; color:white;">關閉選單</button>
@@ -101,14 +95,14 @@
 
 <div id="calModal" class="modal">
     <div class="modal-body">
-        <h3 id="calMonthTitle" style="text-align:center;">2026 / 02</h3>
+        <h3 id="calMonthTitle" style="text-align:center;"></h3>
         <div class="cal-header"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div>
         <div class="calendar-grid" id="calendarGrid"></div>
         <div id="notePanel" style="display:none; margin-top:20px; background:#000; padding:15px; border-radius:15px;">
-            <div id="selDateDisplay" style="color:var(--primary); font-weight:bold; margin-bottom:10px;"></div>
-            <p style="font-size: 12px; color: #888;">💡 輸入 "/放假" 該日將不顯示課表</p>
-            <textarea id="dateNote" style="height:80px;" placeholder="輸入備註..."></textarea>
-            <button class="btn-blue" onclick="saveDateNote()">儲存備註</button>
+            <div id="selDateDisplay" style="color:var(--primary); font-weight:bold;"></div>
+            <p style="font-size: 11px; color: #888;">輸入 "/放假" 切換至休假狀態</p>
+            <textarea id="dateNote" style="height:80px;" placeholder="寫下備註..."></textarea>
+            <button class="btn-blue" onclick="saveDateNote()">儲存並關閉</button>
         </div>
         <button onclick="toggleModal('calModal')" style="background:#333; color:white;">返回</button>
     </div>
@@ -142,7 +136,6 @@
         const day = adj.getDay();
         const dateKey = adj.toISOString().split('T')[0];
 
-        // 核心邏輯：判斷是否放假 (週末 or 國定假日 or 備註含有 /放假)
         const customHoliday = notes[dateKey] && notes[dateKey].includes("/放假");
         const isOff = (day === 0 || day === 6 || holidays2026.includes(dateKey) || customHoliday);
 
@@ -154,14 +147,10 @@
         const tableBox = document.getElementById('tableBox');
 
         if (isOff) {
-            banner.style.display = "block";
-            onClass.style.display = "none";
-            tableBox.style.display = "none";
+            banner.style.display = "block"; onClass.style.display = "none"; tableBox.style.display = "none";
             return;
         } else {
-            banner.style.display = "none";
-            onClass.style.display = "block";
-            tableBox.style.display = "block";
+            banner.style.display = "none"; onClass.style.display = "block"; tableBox.style.display = "block";
         }
 
         let curP = -1, nxtP = -1, cd = 0;
@@ -177,21 +166,21 @@
         const nextInfo = document.getElementById('next-info');
 
         if (curP !== -1) {
-            const info = db[curClass][curP][day-1];
+            const info = db[curClass][curP][day-1] || "未設定";
             badge.innerText = `第 ${curP + 1} 節課中`;
             badge.style.background = "var(--primary)";
-            const [sName, tName] = info.split('(');
-            subject.innerText = sName;
-            teacher.innerText = tName ? tName.replace(')', '') : "無教師資訊";
+            const parts = info.split('(');
+            subject.innerText = parts[0];
+            teacher.innerText = parts[1] ? parts[1].replace(')', '') : "無教師";
         } else {
             badge.innerText = "下課休息";
             badge.style.background = "#444";
-            subject.innerText = "休息時間";
-            teacher.innerText = "放鬆一下吧";
+            subject.innerText = "休息時間"; teacher.innerText = "放鬆一下吧";
         }
         
         if (nxtP !== -1) {
-            nextInfo.innerText = `第 ${nxtP + 1} 節：${db[curClass][nxtP][day-1].split('(')[0]}`;
+            const nInfo = db[curClass][nxtP][day-1] || "無";
+            nextInfo.innerText = `第 ${nxtP + 1} 節：${nInfo.split('(')[0]}`;
         } else { nextInfo.innerText = "今日課程結束"; }
 
         document.getElementById('countdown').innerText = formatHMS(cd);
@@ -204,27 +193,40 @@
         }
     }
 
-    // 教師搜尋
+    // 修復後的模糊搜尋功能
     function handleSearch() {
         const q = document.getElementById('tSearch').value.trim();
         const res = document.getElementById('searchInfo');
-        if(!q) return res.innerHTML = "";
+        if(!q) { res.innerHTML = "請輸入老師名字進行查詢"; return; }
+
         const now = new Date(Date.now() + offset * 1000);
         const day = now.getDay();
         const sec = now.getHours() * 3600 + now.getMinutes() * 60;
+
         let curP = -1, nxtP = -1;
         slots.forEach((s, i) => {
             if(sec >= toSec(s.s) && sec < toSec(s.e)) curP = i;
             if(sec < toSec(s.s) && nxtP === -1) nxtP = i;
         });
-        let cLoc = "不在教室", nLoc = "無課程";
-        Object.keys(db).forEach(cls => {
-            if(day >= 1 && day <= 5) {
-                if(curP!==-1 && db[cls][curP][day-1].includes(q)) cLoc = `正在 ${cls}`;
-                if(nxtP!==-1 && db[cls][nxtP][day-1].includes(q)) nLoc = cls;
+
+        let curLoc = "找不到位置", nxtLoc = "無課程";
+        
+        // 遍歷所有班級
+        Object.keys(db).forEach(clsName => {
+            if (day >= 1 && day <= 5) {
+                const dayIdx = day - 1;
+                // 檢查這節課
+                if (curP !== -1 && db[clsName][curP][dayIdx].includes(q)) {
+                    curLoc = `正在 ${clsName}`;
+                }
+                // 檢查下節課
+                if (nxtP !== -1 && db[clsName][nxtP][dayIdx].includes(q)) {
+                    nxtLoc = clsName;
+                }
             }
         });
-        res.innerHTML = `📍 目前：${cLoc}<br>⏭️ 下一節：${nLoc}`;
+
+        res.innerHTML = `👩‍🏫 老師：${q}\n📍 目前：${curLoc}\n⏭️ 下一節：${nxtLoc}`;
     }
 
     function renderCalendar() {
@@ -255,8 +257,8 @@
         notes[focusedDate] = document.getElementById('dateNote').value;
         localStorage.setItem('edu_notes', JSON.stringify(notes));
         renderCalendar();
-        alert("備註已儲存！如果內容包含 /放假，該日將切換為放假模式。");
-        tick(); // 立即更新一次畫面
+        document.getElementById('notePanel').style.display = "none";
+        tick();
     }
 
     function formatHMS(s) { const m = Math.floor(s / 60); const sec = s % 60; return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`; }
@@ -273,8 +275,8 @@
         data.forEach((row, i) => {
             if(i===4) h += `<tr style="background:#111;color:#444;"><td colspan="6">午休</td></tr>`;
             h += `<tr><td>${i+1}</td>` + row.map(c => {
-                const [s, t] = c.split('(');
-                return `<td>${s}${t ? `<span class="teacher-sub">(${t}</span>` : ""}</td>`;
+                const parts = c.split('(');
+                return `<td>${parts[0]}${parts[1] ? `<span class="teacher-sub">(${parts[1]}</span>` : ""}</td>`;
             }).join('') + `</tr>`;
         });
         document.getElementById('tableBox').innerHTML = h + `</table>`;
