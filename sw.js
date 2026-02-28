@@ -1,4 +1,4 @@
-const CACHE_NAME = 'timetable-v5.2';
+const CACHE_NAME = 'timetable-v5.7';
 const ASSETS = [
   'index.html',
   'manifest.json',
