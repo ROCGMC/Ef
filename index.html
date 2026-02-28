@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>智慧課表 V5.5 - 終極穩定版</title>
+    <title>智慧課表 V5.6</title>
     <link href="https://fonts.cdnfonts.com/css/digital-7-mono" rel="stylesheet">
     <style>
         :root { --primary: #2196F3; --accent: #00ff41; --bg: #000; --red: #ff3b30; --panel: #111; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #eee; overflow-x: hidden; }
         .menu-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; cursor: pointer; padding: 10px; z-index: 1001; }
         .menu-btn div { width: 28px; height: 3px; background: white; margin: 6px 0; border-radius: 2px; }
-        .info-board { background: linear-gradient(145deg, #1a1a1a, #000); border: 2px solid #333; border-radius: 25px; padding: 20px; margin-bottom: 15px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        .info-board { background: linear-gradient(145deg, #1a1a1a, #000); border: 2px solid #333; border-radius: 25px; padding: 20px; margin-bottom: 15px; text-align: center; }
         .digital { font-family: 'Digital-7 Mono', monospace; line-height: 1; }
         .period-badge { background: var(--primary); color: white; padding: 4px 12px; border-radius: 50px; font-size: 0.9rem; font-weight: bold; }
         #cur-subject { font-size: 2.5rem; color: var(--accent); margin: 10px 0 5px 0; font-weight: bold; }
@@ -21,7 +21,7 @@
         .table-card { background: var(--panel); border-radius: 15px; overflow-x: auto; border: 1px solid #222; }
         table { width: 100%; border-collapse: collapse; min-width: 450px; }
         th, td { border: 1px solid #222; padding: 10px 5px; text-align: center; font-size: 13px; }
-        .active-cell { background: rgba(0, 255, 65, 0.2) !important; color: var(--accent); font-weight: bold; outline: 1px solid var(--accent); }
+        .active-cell { background: rgba(0, 255, 65, 0.2) !important; color: var(--accent); font-weight: bold; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; overflow-y: auto; }
         .modal-body { background: #111; margin: 40px auto; padding: 25px; width: 85%; max-width: 500px; border-radius: 20px; border: 1px solid #333; }
         textarea, input, select { width: 100%; padding: 12px; background: #222; border: 1px solid #444; color: white; border-radius: 10px; margin: 10px 0; box-sizing: border-box; }
@@ -35,11 +35,11 @@
 <button class="menu-btn" onclick="openModal('menuModal')"><div></div><div></div><div></div></button>
 
 <div class="info-board">
-    <div id="full-date" class="digital">Loading...</div>
+    <div id="full-date" class="digital">--- / -- / --</div>
     <div id="real-time" class="digital">00:00:00</div>
     <div id="main-content">
-        <div style="margin: 15px 0;"><span class="period-badge" id="period-label">---</span></div>
-        <div id="cur-subject">讀取中</div>
+        <div style="margin: 15px 0;"><span class="period-badge" id="period-label">偵測中</span></div>
+        <div id="cur-subject">讀取中...</div>
         <div id="cur-teacher">---</div>
         <div id="countdown" class="digital">00:00</div>
     </div>
@@ -51,10 +51,10 @@
 <div id="menuModal" class="modal">
     <div class="modal-body">
         <h3 style="color:var(--primary)">控制中心</h3>
-        <button class="btn-blue" onclick="goToCalendar()">📅 行事曆備註 (/放假)</button>
+        <button class="btn-blue" onclick="goToCalendar()">📅 行事曆與放假設定</button>
         <hr style="border-color:#333">
-        <h4>🔍 教師詳細位置追蹤</h4>
-        <input type="text" id="tSearch" placeholder="輸入名字..." oninput="handleSearch()">
+        <h4>🔍 教師詳細位置預報</h4>
+        <input type="text" id="tSearch" placeholder="輸入老師名字..." oninput="handleSearch()">
         <div id="searchInfo" style="background:#000; padding:15px; border-radius:10px; font-size:14px; color:var(--accent); border:1px solid #333; min-height:80px; white-space: pre-line; line-height:1.6;"></div>
         <hr style="border-color:#333">
         <h4>🛠️ JSON 資料庫</h4>
@@ -77,51 +77,50 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
 <script>
+    // 1. 核心設定
     const slots = [
         { s: "08:10", e: "09:00" }, { s: "09:10", e: "10:00" }, { s: "10:10", e: "11:00" },
         { s: "11:10", e: "12:00" }, { s: "13:10", e: "14:00" }, { s: "14:10", e: "15:00" }, { s: "15:20", e: "16:10" }
     ];
 
+    // 2. 初始化資料
     let db = JSON.parse(localStorage.getItem('edu_db')) || { "電一乙": Array.from({length:7},()=>Array(5).fill("未設定")) };
     let notes = JSON.parse(localStorage.getItem('edu_notes')) || {};
     let curClass = localStorage.getItem('edu_class') || Object.keys(db)[0];
     let focusedDate = "";
 
-    function init() {
-        renderClassList(); renderTable();
-        document.getElementById('jsonDB').value = JSON.stringify(db, null, 2);
-        setInterval(tick, 1000); tick();
-        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
-    }
-
+    // 3. 核心計時引擎 (Tick)
     function tick() {
         const now = new Date();
-        const day = now.getDay(), dateKey = now.toISOString().split('T')[0];
+        const day = now.getDay();
+        const dateKey = now.toISOString().split('T')[0];
         const sec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
 
+        // 顯示時間與日期
         document.getElementById('full-date').innerText = now.toLocaleDateString('zh-TW', {year:'numeric', month:'2-digit', day:'2-digit'}).replace(/\//g,' / ');
         document.getElementById('real-time').innerText = now.toTimeString().split(' ')[0];
 
-        const badge = document.getElementById('period-label'), sub = document.getElementById('cur-subject'), tea = document.getElementById('cur-teacher'), cdBox = document.getElementById('countdown');
+        const badge = document.getElementById('period-label');
+        const sub = document.getElementById('cur-subject');
+        const tea = document.getElementById('cur-teacher');
+        const cdBox = document.getElementById('countdown');
 
-        // 放假/週末判定
-        if (day === 0 || day === 6 || (notes[dateKey] && notes[dateKey].includes("/放假"))) {
-            badge.innerText = "OFF"; badge.style.background = "#555";
-            sub.innerText = "放假休息中"; sub.style.color = "#888";
-            tea.innerText = "Enjoy your holiday!"; cdBox.innerText = "--:--";
+        // A. 放假/放學判定
+        const isHoliday = (day === 0 || day === 6 || (notes[dateKey] && notes[dateKey].includes("/放假")));
+        const isAfterSchool = sec > toSec(slots[6].e);
+
+        if (isHoliday || isAfterSchool) {
+            badge.innerText = "放假中";
+            badge.style.background = "#555";
+            sub.innerText = "休息時間";
+            sub.style.color = "#888";
+            tea.innerText = isHoliday ? "週末或自定義假日" : "今日課程已結束";
+            cdBox.innerText = "--:--";
             return;
         }
 
-        // 放學判定
-        if (sec > toSec(slots[6].e)) {
-            badge.innerText = "OFF"; badge.style.background = var(--red);
-            sub.innerText = "今日已放學"; sub.style.color = var(--red);
-            tea.innerText = "回家注意安全"; cdBox.innerText = "明日待命";
-            return;
-        }
-
+        // B. 節次判定
         let curP = -1, nxtP = -1, cd = 0;
         slots.forEach((s, i) => {
             const start = toSec(s.s), end = toSec(s.e);
@@ -130,38 +129,62 @@
         });
 
         if (curP !== -1) {
-            badge.innerText = `第 ${curP + 1} 節課中`; badge.style.background = "var(--primary)";
+            // 上課中
+            badge.innerText = `第 ${curP + 1} 節課中`;
+            badge.style.background = "var(--primary)";
             const info = (db[curClass][curP][day-1] || "空").split('(');
-            sub.innerText = info[0]; sub.style.color = "var(--accent)";
+            sub.innerText = info[0];
+            sub.style.color = "var(--accent)";
             tea.innerText = info[1] ? info[1].replace(')', '') : "無教師";
         } else {
-            badge.innerText = "☕ 下課休息中"; badge.style.background = "#444";
-            sub.innerText = "休息時間"; sub.style.color = "#fff";
+            // 下課中
+            badge.innerText = "下課休息中";
+            badge.style.background = "#444";
+            sub.innerText = "休息時間";
+            sub.style.color = "#fff";
             tea.innerText = nxtP !== -1 ? `下一節：${(db[curClass][nxtP][day-1] || "").split('(')[0]}` : "準備放學";
         }
         cdBox.innerText = formatHMS(cd);
+
+        // 表格高亮
+        document.querySelectorAll('td').forEach(c => c.classList.remove('active-cell'));
+        if (curP !== -1) {
+            const rowIdx = curP + (curP >= 4 ? 2 : 1);
+            const row = document.querySelectorAll('tr')[rowIdx];
+            if(row) row.cells[day].classList.add('active-cell');
+        }
     }
 
+    // 4. 教師搜尋 (上一節 + 下一節)
     function handleSearch() {
         const q = document.getElementById('tSearch').value.trim();
         const res = document.getElementById('searchInfo');
-        if(!q) return res.innerText = "輸入名稱查詢詳細動態...";
+        if(!q) return res.innerText = "輸入名稱查詢動態...";
+        
         const now = new Date(), day = now.getDay(), sec = now.getHours()*3600 + now.getMinutes()*60;
         let curP = -1, nxtP = -1;
         slots.forEach((s, i) => {
             if (sec >= toSec(s.s) && sec < toSec(s.e)) curP = i;
             if (sec < toSec(s.s) && nxtP === -1) nxtP = i;
         });
-        let curS = "🔹 當前位置：不在教室", nxtS = "🔸 下一節：無排課";
+
+        let curS = "🔹 目前位置：不在教室 / 沒課";
+        let nxtS = "🔸 下一節課：無排課安排";
+
         Object.keys(db).forEach(cls => {
             if(day >= 1 && day <= 5) {
-                if(curP !== -1 && db[cls][curP][day-1].includes(q)) curS = `🔹 當前：${cls} (${db[cls][curP][day-1].split('(')[0]})`;
-                if(nxtP !== -1 && db[cls][nxtP][day-1].includes(q)) nxtS = `🔸 下一節：${cls} (${db[cls][nxtP][day-1].split('(')[0]})`;
+                if(curP !== -1 && db[cls][curP][day-1].includes(q)) {
+                    curS = `🔹 當前：${cls} (${db[cls][curP][day-1].split('(')[0]})`;
+                }
+                if(nxtP !== -1 && db[cls][nxtP][day-1].includes(q)) {
+                    nxtS = `🔸 下一節：${cls} (${db[cls][nxtP][day-1].split('(')[0]})`;
+                }
             }
         });
         res.innerText = `👩‍🏫 搜尋對象：${q}\n${curS}\n${nxtS}`;
     }
 
+    // 5. 輔助函數
     function toSec(t) { const [h, m] = t.split(':'); return h*3600 + m*60; }
     function formatHMS(s) { return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
     function openModal(id) { document.getElementById(id).style.display = 'block'; }
@@ -170,7 +193,7 @@
     function backToMenu() { closeModal('calModal'); openModal('menuModal'); }
     function renderClassList() { document.getElementById('classSelector').innerHTML = Object.keys(db).map(c => `<option value="${c}" ${c===curClass?'selected':''}>${c}</option>`).join(''); }
     function switchClass() { curClass = document.getElementById('classSelector').value; localStorage.setItem('edu_class', curClass); renderTable(); }
-    function saveDB() { try { db = JSON.parse(document.getElementById('jsonDB').value); localStorage.setItem('edu_db', JSON.stringify(db)); renderTable(); alert("儲存成功"); } catch(e) { alert("JSON 格式錯誤"); } }
+    function saveDB() { try { db = JSON.parse(document.getElementById('jsonDB').value); localStorage.setItem('edu_db', JSON.stringify(db)); renderClassList(); renderTable(); alert("儲存成功"); } catch(e) { alert("JSON 格式錯誤"); } }
     
     function renderCalendar() {
         const d = new Date(), y = d.getFullYear(), m = d.getMonth();
@@ -205,7 +228,19 @@
         });
         document.getElementById('tableBox').innerHTML = h + `</table>`;
     }
-    window.onload = init;
+
+    // 啟動
+    window.onload = () => {
+        init();
+        setInterval(tick, 1000);
+        tick();
+    };
+
+    function init() {
+        renderClassList();
+        renderTable();
+        document.getElementById('jsonDB').value = JSON.stringify(db, null, 2);
+    }
 </script>
 </body>
 </html>
